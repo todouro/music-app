@@ -18,13 +18,23 @@ export default function ElasticSlider({ value, onChange }: ElasticSliderProps) {
   const [region, setRegion] = useState<'left' | 'middle' | 'right'>('middle')
   const [hovered, setHovered] = useState(false)
 
+  const pointerValue = (clientX: number) => {
+    if (!sliderRef.current) return value
+    const { left, right } = sliderRef.current.getBoundingClientRect()
+    const width = right - left
+    const relative = width <= 0 ? 0 : (clientX - left) / width
+    return Math.max(0, Math.min(1, relative))
+  }
+
   const move = (event: PointerEvent<HTMLDivElement>) => {
-    if (!dragging.current || !sliderRef.current) return
+    if (!sliderRef.current) return
     const { left, right } = sliderRef.current.getBoundingClientRect()
     const outside = event.clientX < left ? left - event.clientX :
       event.clientX > right ? event.clientX - right : 0
     setRegion(event.clientX < left ? 'left' : event.clientX > right ? 'right' : 'middle')
     setOverflow(MAX_OVERFLOW * (2 / (1 + Math.exp(-outside / MAX_OVERFLOW)) - 1))
+    if (!dragging.current) return
+    onChange(pointerValue(event.clientX))
   }
   const release = () => {
     dragging.current = false
@@ -50,8 +60,16 @@ export default function ElasticSlider({ value, onChange }: ElasticSliderProps) {
         <input type="range" min="0" max="1" step="0.005" value={value}
           aria-label="Volume" aria-valuetext={`${percent} percent`}
           onChange={event => onChange(Math.max(0, Math.min(1, Number(event.target.value))))}
-          onPointerDown={() => { dragging.current = true }}
-          onPointerUp={release} onPointerCancel={release} />
+          onPointerDown={(event) => {
+            dragging.current = true
+            event.currentTarget.setPointerCapture(event.pointerId)
+            onChange(pointerValue(event.clientX))
+          }}
+          onPointerUp={(event) => {
+            event.currentTarget.releasePointerCapture(event.pointerId)
+            release()
+          }}
+          onPointerCancel={release} />
       </div>
       <motion.div className="elastic-volume-icon" aria-hidden="true"
         animate={{ x: region === 'right' ? overflow : 0, scale: region === 'right' ? 1.25 : 1 }}

@@ -49,6 +49,7 @@ function App() {
   const volumeRef = useRef(0.82)
   const playNextRef = useRef<() => void>(() => {})
   const queueRef = useRef(new PlaybackQueue())
+  const lastPlaylistIdRef = useRef<string | null>(null)
   const [query, setQuery] = useState('')
   const [seek, setSeek] = useState(0)
   const [newPlaylistName, setNewPlaylistName] = useState('')
@@ -188,10 +189,30 @@ function App() {
   useEffect(() => () => revokeOwnedObjectUrls(), [])
 
   useEffect(() => {
-    if (queueRef.current.size === 0 && currentTrackId && tracks.length) {
-      queueRef.current.start(tracks.map((track) => track.id), currentTrackId)
+    const playlistTrackIds = activePlaylistId === libraryId
+      ? tracks.map((track) => track.id)
+      : activePlaylist?.trackIds ?? []
+
+    if (!playlistTrackIds.length) return
+
+    const currentIdInPlaylist = currentTrackId ? playlistTrackIds.includes(currentTrackId) : false
+
+    if (lastPlaylistIdRef.current !== activePlaylistId) {
+      lastPlaylistIdRef.current = activePlaylistId
+      if (!currentTrackId || !currentIdInPlaylist) {
+        const fallbackTrackId = playlistTrackIds[0]
+        queueRef.current.start(playlistTrackIds, fallbackTrackId)
+        if (currentTrackId !== fallbackTrackId) setCurrentTrack(fallbackTrackId)
+        return
+      }
+      queueRef.current.start(playlistTrackIds, currentTrackId)
+      return
     }
-  }, [tracks, currentTrackId])
+
+    if (!currentTrackId && queueRef.current.size === 0) {
+      queueRef.current.start(playlistTrackIds, playlistTrackIds[0])
+    }
+  }, [activePlaylist, activePlaylistId, currentTrackId, setCurrentTrack, tracks])
 
   useEffect(() => {
     audioRef.current?.stop()
