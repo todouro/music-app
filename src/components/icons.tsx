@@ -84,6 +84,27 @@ export function HeartFilled({ size = 20, className, color = 'currentColor', ...p
   )
 }
 
+// Heart Outline
+export function HeartOutline({ size = 20, className, color = 'currentColor', ...props }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35Z" />
+    </svg>
+  )
+}
+
 // Solid Play
 export function PlayFilled({ size = 20, className, color = 'currentColor', ...props }: IconProps) {
   return (
@@ -446,4 +467,66 @@ export function RefreshFilled({ size = 20, className, color = 'currentColor', ..
     </svg>
   )
 }
+
+// Settings / Gear icon
+export function SettingsFilled({ size = 20, className, color = 'currentColor', ...props }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill={color}
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm-2 4a2 2 0 1 1 4 0 2 2 0 0 1-4 0Z"
+      />
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54A.484.484 0 0 0 13.9 2h-3.8c-.24 0-.45.17-.48.41l-.38 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.72 8.47c-.13.22-.08.49.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.8c.24 0 .45-.17.48-.41l.38-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.49-.12-.61l-2.01-1.58Z"
+      />
+    </svg>
+  )
+}
+
+// Looks / Palette icon
+export function PaletteFilled({ size = 20, className, color = 'currentColor', ...props }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill={color}
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      <path d="M12 2C6.49 2 2 6.49 2 12c0 4.41 3.59 8 8 8 1.1 0 2-.9 2-2 0-.46-.16-.89-.42-1.24-.26-.35-.42-.78-.42-1.26 0-1.1.9-2 2-2h2.34C18.66 13.5 22 10.16 22 6c0-2.21-.89-4.21-2.34-5.66C17.71 2.89 15.21 2 12 2Zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 8 6.5 8 8 8.67 8 9.5 7.33 11 6.5 11Zm3-4C8.67 7 8 6.33 8 5.5S8.67 4 9.5 4s1.5.67 1.5 1.5S10.33 7 9.5 7Zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 4 14.5 4s1.5.67 1.5 1.5S15.33 7 14.5 7Zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 8 17.5 8s1.5.67 1.5 1.5-.67 1.5-1.5 1.5Z" />
+    </svg>
+  )
+}
+
+// Sparkles / Ambient glow icon
+export function SparklesFilled({ size = 20, className, color = 'currentColor', ...props }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill={color}
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      <path d="M12 2.5l1.6 4.7a1.5 1.5 0 0 0 1.2 1.2l4.7 1.6-4.7 1.6a1.5 1.5 0 0 0-1.2 1.2l-1.6 4.7-1.6-4.7a1.5 1.5 0 0 0-1.2-1.2l-4.7-1.6 4.7-1.6a1.5 1.5 0 0 0 1.2-1.2L12 2.5z" />
+      <path d="M19 16l.8 2.2a.8.8 0 0 0 .6.6l2.2.8-2.2.8a.8.8 0 0 0-.6.6L19 23.2l-.8-2.2a.8.8 0 0 0-.6-.6L15.4 19.6l2.2-.8a.8.8 0 0 0 .6-.6L19 16z" />
+    </svg>
+  )
+}
+
 

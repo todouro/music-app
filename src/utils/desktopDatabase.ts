@@ -1,7 +1,7 @@
 import { BaseDirectory, exists, mkdir, readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
 import { isDesktopApp } from './platform.ts'
 import { hydrateTracksArtwork, sanitizeTracksForPersistence } from './artworkStorage.ts'
-import type { Playlist, RepeatMode, Track } from '../types.ts'
+import type { Playlist, RepeatMode, ThemeMode, Track } from '../types.ts'
 
 export interface DesktopLibraryPayload {
   tracks: Track[]
@@ -11,6 +11,7 @@ export interface DesktopLibraryPayload {
   volume: number
   shuffle: boolean
   repeat: RepeatMode
+  themeMode?: ThemeMode
   musicFolderPath?: string
   coverFolderPath?: string
   musicFolderName?: string

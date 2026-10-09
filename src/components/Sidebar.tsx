@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import type { ChangeEvent } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   AudioLinesFilled,
   CheckFilled,
@@ -11,6 +12,7 @@ import {
   PlaylistFilled,
   PlusFilled,
   RefreshFilled,
+  SettingsFilled,
   TrashFilled,
   UploadFilled,
 } from './icons'
@@ -27,6 +29,7 @@ export type SidebarProps = {
   onCreate: () => void
   onRenamePlaylist: (playlist: Playlist) => void
   onDeletePlaylist: (playlist: Playlist) => void
+  onOpenAddToPlaylist?: (playlist: Playlist) => void
   onAddSongs: (e: ChangeEvent<HTMLInputElement>) => void
   onAddMusicFolder: (e: ChangeEvent<HTMLInputElement>) => void
   onAddCoverFolder: (e: ChangeEvent<HTMLInputElement>) => void
@@ -41,6 +44,7 @@ export type SidebarProps = {
   musicFolderName?: string
   coverFolderName?: string
   scanNotice?: string | null
+  onOpenSettings?: () => void
 }
 
 export function Sidebar({
@@ -53,6 +57,7 @@ export function Sidebar({
   onCreate,
   onRenamePlaylist,
   onDeletePlaylist,
+  onOpenAddToPlaylist,
   onAddSongs,
   onAddMusicFolder,
   onAddCoverFolder,
@@ -67,6 +72,7 @@ export function Sidebar({
   musicFolderName,
   coverFolderName,
   scanNotice,
+  onOpenSettings,
 }: SidebarProps) {
   const musicInputRef = useRef<HTMLInputElement>(null)
   const coverInputRef = useRef<HTMLInputElement>(null)
@@ -143,6 +149,20 @@ export function Sidebar({
             <span className="nav-playlist-name">{playlist.name}</span>
             <em>{playlist.trackIds.length}</em>
             <div className="nav-item-actions">
+              {onOpenAddToPlaylist && (
+                <button
+                  type="button"
+                  className="nav-action-btn add-songs"
+                  title={`Add songs to "${playlist.name}"`}
+                  aria-label={`Add songs to "${playlist.name}"`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onOpenAddToPlaylist(playlist)
+                  }}
+                >
+                  <PlusFilled size={13} />
+                </button>
+              )}
               <button
                 type="button"
                 className="nav-action-btn edit"
@@ -304,12 +324,34 @@ export function Sidebar({
           </button>
         </div>
 
-        {scanNotice && (
-          <div className="sidebar-scan-notice" role="status">
-            <CheckFilled size={14} />
-            <span>{scanNotice}</span>
-          </div>
-        )}
+        <div className="sidebar-divider" role="separator" />
+
+        <button
+          type="button"
+          className="nav-item nav-settings-btn"
+          title="Open settings"
+          aria-label="Settings"
+          onClick={onOpenSettings}
+        >
+          <SettingsFilled size={18} />
+          <span>Settings</span>
+        </button>
+
+        <AnimatePresence>
+          {scanNotice && (
+            <motion.div
+              className="sidebar-scan-notice"
+              role="status"
+              initial={{ opacity: 0, y: 6, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -4, scale: 0.96 }}
+              transition={{ duration: 0.2 }}
+            >
+              <CheckFilled size={14} />
+              <span>{scanNotice}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </nav>
     </aside>
   )

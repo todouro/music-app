@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, DragEvent } from 'react'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import { useMusicStore } from '../store/useMusicStore'
+import { showToast, type ToastType } from '../store/useToastStore'
 import {
   extractCovers,
   isAudioFile,
@@ -34,16 +35,24 @@ export function useLibraryImport() {
   const [scanNotice, setScanNotice] = useState<string | null>(null)
   const noticeTimerRef = useRef<number | null>(null)
 
-  const showNotice = useCallback((message: string) => {
-    if (noticeTimerRef.current) {
-      window.clearTimeout(noticeTimerRef.current)
-    }
-    setScanNotice(message)
-    noticeTimerRef.current = window.setTimeout(() => {
-      setScanNotice(null)
-      noticeTimerRef.current = null
-    }, 3800)
-  }, [])
+  const showNotice = useCallback(
+    (
+      message: string,
+      type: ToastType = 'success',
+      title = 'Library Updated',
+    ) => {
+      if (noticeTimerRef.current) {
+        window.clearTimeout(noticeTimerRef.current)
+      }
+      setScanNotice(message)
+      showToast(message, { title, type })
+      noticeTimerRef.current = window.setTimeout(() => {
+        setScanNotice(null)
+        noticeTimerRef.current = null
+      }, 3800)
+    },
+    [],
+  )
 
   const importNativeScanResult = useCallback(
     async (audioPaths: string[], coverPaths: string[]) => {
@@ -125,9 +134,15 @@ export function useLibraryImport() {
     const parsedTracks = await nativeTracksFromPaths(filePaths, storeLookup, existingIds)
     if (parsedTracks.length > 0) {
       addTracks(parsedTracks)
-      showNotice(`Added ${parsedTracks.length} song${parsedTracks.length === 1 ? '' : 's'}`)
+      showNotice(
+        parsedTracks.length === 1
+          ? '1 song imported successfully'
+          : `${parsedTracks.length} songs imported successfully`,
+        'success',
+        'Import Successful',
+      )
     } else {
-      showNotice('All selected songs are already in your library')
+      showNotice('All selected songs are already in your library', 'info', 'Library Up to Date')
     }
   }
 
@@ -143,9 +158,15 @@ export function useLibraryImport() {
       const { audioPaths, coverPaths } = await scanNativeFolder(folderPath)
       const result = await importNativeScanResult(audioPaths, coverPaths)
       if (result.addedTracksCount > 0) {
-        showNotice(`Added ${result.addedTracksCount} new song${result.addedTracksCount === 1 ? '' : 's'}`)
+        showNotice(
+          result.addedTracksCount === 1
+            ? '1 song imported successfully'
+            : `${result.addedTracksCount} songs imported successfully`,
+          'success',
+          'Import Successful',
+        )
       } else {
-        showNotice(`Library is up to date (${audioPaths.length} songs found)`)
+        showNotice(`Library is up to date (${audioPaths.length} songs found)`, 'info', 'Folder Scanned')
       }
     } finally {
       setIsScanningMusic(false)
@@ -165,13 +186,19 @@ export function useLibraryImport() {
         const { audioPaths, coverPaths } = await scanNativeFolder(currentPath)
         const result = await importNativeScanResult(audioPaths, coverPaths)
         if (result.addedTracksCount > 0) {
-          showNotice(`Found and added ${result.addedTracksCount} new song${result.addedTracksCount === 1 ? '' : 's'}`)
+          showNotice(
+            result.addedTracksCount === 1
+              ? '1 new song imported successfully'
+              : `${result.addedTracksCount} new songs imported successfully`,
+            'success',
+            'Import Successful',
+          )
         } else {
-          showNotice('Music folder is up to date (no new files)')
+          showNotice('Music folder is up to date (no new files)', 'info', 'Library Up to Date')
         }
       } catch (err) {
         console.warn('Rescan music folder failed:', err)
-        showNotice('Failed to scan music folder')
+        showNotice('Failed to scan music folder', 'error', 'Scan Error')
       } finally {
         setIsScanningMusic(false)
       }
@@ -226,10 +253,16 @@ export function useLibraryImport() {
         const { lookup, urls } = nativeCoversFromPaths(coverPaths)
         if (urls.length > 0) {
           addCovers(lookup, urls)
-          showNotice(`Imported ${urls.length} cover artwork${urls.length === 1 ? '' : 's'}`)
+          showNotice(
+            urls.length === 1
+              ? '1 cover artwork imported successfully'
+              : `${urls.length} cover artworks imported successfully`,
+            'success',
+            'Covers Imported',
+          )
         }
       } else {
-        showNotice('No cover artwork files found')
+        showNotice('No cover artwork files found', 'info', 'Covers Notice')
       }
     } finally {
       setIsScanningCovers(false)
@@ -251,14 +284,20 @@ export function useLibraryImport() {
           const { lookup, urls } = nativeCoversFromPaths(coverPaths)
           if (urls.length > 0) {
             addCovers(lookup, urls)
-            showNotice(`Found and updated ${urls.length} cover image${urls.length === 1 ? '' : 's'}`)
+            showNotice(
+              urls.length === 1
+                ? '1 cover artwork updated successfully'
+                : `${urls.length} cover artworks updated successfully`,
+              'success',
+              'Covers Updated',
+            )
           }
         } else {
-          showNotice('Cover folder is up to date (no new files)')
+          showNotice('Cover folder is up to date (no new files)', 'info', 'Covers Up to Date')
         }
       } catch (err) {
         console.warn('Rescan cover folder failed:', err)
-        showNotice('Failed to scan cover folder')
+        showNotice('Failed to scan cover folder', 'error', 'Scan Error')
       } finally {
         setIsScanningCovers(false)
       }
@@ -322,9 +361,15 @@ export function useLibraryImport() {
     )
     if (parsedTracks.length > 0) {
       addTracks(parsedTracks)
-      showNotice(`Added ${parsedTracks.length} new song${parsedTracks.length === 1 ? '' : 's'}`)
+      showNotice(
+        parsedTracks.length === 1
+          ? '1 song imported successfully'
+          : `${parsedTracks.length} songs imported successfully`,
+        'success',
+        'Import Successful',
+      )
     } else {
-      showNotice('Music folder is up to date (no new files)')
+      showNotice('Music folder is up to date (no new files)', 'info', 'Folder Scanned')
     }
   }
 
@@ -333,9 +378,15 @@ export function useLibraryImport() {
     const { lookup, urls } = extractCovers(files)
     if (urls.length > 0) {
       addCovers(lookup, urls)
-      showNotice(`Updated ${urls.length} cover artwork${urls.length === 1 ? '' : 's'}`)
+      showNotice(
+        urls.length === 1
+          ? '1 cover artwork imported successfully'
+          : `${urls.length} cover artworks imported successfully`,
+        'success',
+        'Covers Imported',
+      )
     } else {
-      showNotice('No cover artwork files found')
+      showNotice('No cover artwork files found', 'info', 'Covers Notice')
     }
   }
 
@@ -363,9 +414,15 @@ export function useLibraryImport() {
     )
     if (parsedTracks.length > 0) {
       addTracks(parsedTracks)
-      showNotice(`Added ${parsedTracks.length} song${parsedTracks.length === 1 ? '' : 's'}`)
+      showNotice(
+        parsedTracks.length === 1
+          ? '1 song imported successfully'
+          : `${parsedTracks.length} songs imported successfully`,
+        'success',
+        'Import Successful',
+      )
     } else {
-      showNotice('All selected songs are already in your library')
+      showNotice('All selected songs are already in your library', 'info', 'Library Up to Date')
     }
     event.target.value = ''
   }
@@ -432,7 +489,13 @@ export function useLibraryImport() {
       )
       if (parsedTracks.length > 0) {
         addTracks(parsedTracks)
-        showNotice(`Added ${parsedTracks.length} song${parsedTracks.length === 1 ? '' : 's'}`)
+        showNotice(
+          parsedTracks.length === 1
+            ? '1 song imported successfully'
+            : `${parsedTracks.length} songs imported successfully`,
+          'success',
+          'Import Successful',
+        )
       }
     }
   }

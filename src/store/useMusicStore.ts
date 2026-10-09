@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Playlist, RepeatMode, Track } from '../types.ts'
+import type { Playlist, RepeatMode, ThemeMode, Track } from '../types.ts'
 import { assignCoversToTracks, syncTracksWithCovers, uniqueTracks } from '../utils/library.ts'
 import { loadDesktopLibrary, saveDesktopLibrary } from '../utils/desktopDatabase.ts'
 import { hydrateTracksArtwork, sanitizeTracksForPersistence } from '../utils/artworkStorage.ts'
@@ -15,6 +15,7 @@ type MusicState = {
   isPlaying: boolean
   shuffle: boolean
   repeat: RepeatMode
+  themeMode: ThemeMode
   volume: number
   musicFolderPath?: string
   coverFolderPath?: string
@@ -36,6 +37,7 @@ type MusicState = {
   setIsPlaying: (isPlaying: boolean) => void
   toggleShuffle: () => void
   cycleRepeat: () => void
+  setThemeMode: (themeMode: ThemeMode) => void
   setVolume: (volume: number) => void
   updateTrack: (trackId: string, updates: Partial<Track>) => void
 }
@@ -57,6 +59,7 @@ function queueSave(state: MusicState) {
       volume: state.volume,
       shuffle: state.shuffle,
       repeat: state.repeat,
+      themeMode: state.themeMode,
       musicFolderPath: state.musicFolderPath,
       coverFolderPath: state.coverFolderPath,
       musicFolderName: state.musicFolderName,
@@ -89,6 +92,7 @@ export const useMusicStore = create<MusicState>()(
       isPlaying: false,
       shuffle: false,
       repeat: 'off',
+      themeMode: 'ambient',
       volume: 0.82,
       musicFolderPath: undefined,
       coverFolderPath: undefined,
@@ -172,6 +176,7 @@ export const useMusicStore = create<MusicState>()(
                   volume: typeof loaded.volume === 'number' ? loaded.volume : state.volume,
                   shuffle: typeof loaded.shuffle === 'boolean' ? loaded.shuffle : state.shuffle,
                   repeat: loaded.repeat || state.repeat,
+                  themeMode: loaded.themeMode || state.themeMode,
                   musicFolderPath: state.musicFolderPath || loaded.musicFolderPath,
                   coverFolderPath: state.coverFolderPath || loaded.coverFolderPath,
                   musicFolderName: state.musicFolderName || loaded.musicFolderName,
@@ -323,6 +328,11 @@ export const useMusicStore = create<MusicState>()(
           return { repeat }
         }),
 
+      setThemeMode: (themeMode) => {
+        set({ themeMode })
+        queueSave(get())
+      },
+
       setVolume: (volume) => {
         set({ volume })
         queueSave(get())
@@ -365,6 +375,7 @@ export const useMusicStore = create<MusicState>()(
         volume: state.volume,
         shuffle: state.shuffle,
         repeat: state.repeat,
+        themeMode: state.themeMode,
         musicFolderPath: state.musicFolderPath,
         coverFolderPath: state.coverFolderPath,
         musicFolderName: state.musicFolderName,

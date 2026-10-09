@@ -833,4 +833,80 @@ test('rescan filtering only returns newly added audio files when rescanning a fo
   assert.equal(newTracks[0].title, 'Song 2')
 })
 
+test('favorites toggle adds and removes tracks from the favorites playlist', () => {
+  const store = useMusicStore.getState()
+  const trackId = 'test-track-fav-1'
+
+  // Initially not in favorites
+  let favoritesPlaylist = useMusicStore.getState().playlists.find((p) => p.id === 'favorites')
+  assert.ok(favoritesPlaylist)
+  assert.equal(favoritesPlaylist.trackIds.includes(trackId), false)
+
+  // Add to favorites
+  store.addTrackToPlaylist('favorites', trackId)
+  favoritesPlaylist = useMusicStore.getState().playlists.find((p) => p.id === 'favorites')
+  assert.equal(favoritesPlaylist.trackIds.includes(trackId), true)
+
+  // Remove from favorites
+  store.removeTrackFromPlaylist('favorites', trackId)
+  favoritesPlaylist = useMusicStore.getState().playlists.find((p) => p.id === 'favorites')
+  assert.equal(favoritesPlaylist.trackIds.includes(trackId), false)
+})
+
+test('addTrackToPlaylist prevents duplicate track ids in playlist', () => {
+  const store = useMusicStore.getState()
+  const trackId = 'test-track-dup-1'
+  const playlistId = 'favorites'
+
+  store.addTrackToPlaylist(playlistId, trackId)
+  store.addTrackToPlaylist(playlistId, trackId)
+
+  const playlist = useMusicStore.getState().playlists.find((p) => p.id === playlistId)
+  const occurrences = playlist.trackIds.filter((id) => id === trackId).length
+  assert.equal(occurrences, 1)
+
+  // Clean up
+  store.removeTrackFromPlaylist(playlistId, trackId)
+})
+
+test('clicking or switching playlist while actively listening does not auto-switch the song', () => {
+  const queue = new PlaybackQueue()
+  const syncState = { lastPlaylistId: 'library', lastTrackIds: ['track1', 'track2', 'track3'] }
+  queue.start(['track1', 'track2', 'track3'], 'track2')
+
+  let selectedTrackId = null
+  const onTrackSelect = (id) => {
+    selectedTrackId = id
+  }
+
+  // Actively listening to 'track2' from library. User clicks on a different playlist ('playlist-chill' with ['trackA', 'trackB'])
+  syncPlaylistQueue(queue, syncState, {
+    activePlaylistId: 'playlist-chill',
+    playlistTrackIds: ['trackA', 'trackB'],
+    currentTrackId: 'track2',
+    isPlaying: true,
+    onTrackSelect,
+  })
+
+  // onTrackSelect MUST NOT be called! Current song MUST NOT auto-switch!
+  assert.equal(selectedTrackId, null)
+  // Queue still retains track2 and playback can continue in active session
+  assert.equal(queue.currentHistory[0], 'track2')
+  assert.equal(queue.next('track2', false, 'off'), 'track3')
+})
+
+test('switching between normal mode and ambient mode updates store state', () => {
+  const store = useMusicStore.getState()
+  // Default is ambient mode
+  assert.equal(store.themeMode, 'ambient')
+
+  // Switch to normal mode
+  store.setThemeMode('normal')
+  assert.equal(useMusicStore.getState().themeMode, 'normal')
+
+  // Switch back to ambient mode
+  store.setThemeMode('ambient')
+  assert.equal(useMusicStore.getState().themeMode, 'ambient')
+})
+
 

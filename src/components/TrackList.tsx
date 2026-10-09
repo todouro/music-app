@@ -5,13 +5,15 @@ import {
   DiscFilled,
   FolderImageFilled,
   FolderMusicFilled,
+  HeartFilled,
+  HeartOutline,
   PauseFilled,
   PencilFilled,
   PlayFilled,
+  PlusFilled,
   UploadFilled,
 } from './icons'
-import PlaylistDropdown from './PlaylistDropdown'
-import { libraryId } from '../store/useMusicStore'
+import { favoritesId, libraryId } from '../store/useMusicStore'
 import { cleanDisplayTitle, formatTime } from '../utils/library'
 import type { Playlist, Track } from '../types'
 
@@ -23,8 +25,10 @@ export type TrackListProps = {
   currentTrackId?: string
   isPlaying: boolean
   onPlay: (trackId: string) => void
-  onAddToPlaylist: (playlistId: string, trackId: string) => void
-  onRemoveFromPlaylist: (playlistId: string, trackId: string) => void
+  onAddToPlaylist?: (playlistId: string, trackId: string) => void
+  onRemoveFromPlaylist?: (playlistId: string, trackId: string) => void
+  onToggleFavorite: (trackId: string) => void
+  onOpenAddToPlaylist?: (playlist: Playlist) => void
   onEditTrack: (track: Track) => void
   onAddSongs?: (e: ChangeEvent<HTMLInputElement>) => void
   onAddMusicFolder?: (e: ChangeEvent<HTMLInputElement>) => void
@@ -43,8 +47,9 @@ export function TrackList({
   currentTrackId,
   isPlaying,
   onPlay,
-  onAddToPlaylist,
   onRemoveFromPlaylist,
+  onToggleFavorite,
+  onOpenAddToPlaylist,
   onEditTrack,
   onAddSongs,
   onAddMusicFolder,
@@ -54,7 +59,36 @@ export function TrackList({
   onNativeMusicFolder,
   onNativeCoverFolder,
 }: TrackListProps) {
+  const favoritesPlaylist = playlists.find((p) => p.id === favoritesId)
+  const favoriteTrackIds = new Set(favoritesPlaylist?.trackIds ?? [])
+
   if (tracks.length === 0) {
+    if (activePlaylistId !== libraryId && activePlaylist) {
+      return (
+        <motion.div
+          className="empty-state empty-playlist-state"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <DiscFilled size={42} />
+          <h3>"{activePlaylist.name}" is empty</h3>
+          <p>There are no songs in this playlist yet. Add songs from your library.</p>
+          {onOpenAddToPlaylist && (
+            <div className="empty-state-actions">
+              <button
+                type="button"
+                className="empty-state-btn primary-action"
+                onClick={() => onOpenAddToPlaylist(activePlaylist)}
+              >
+                <PlusFilled size={15} />
+                <span>Add to playlist</span>
+              </button>
+            </div>
+          )}
+        </motion.div>
+      )
+    }
+
     return (
       <motion.div className="empty-state" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}>
         <DiscFilled size={42} />
@@ -145,87 +179,134 @@ export function TrackList({
         exit={{ opacity: 0, y: -6 }}
         transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
       >
-        {tracks.map((track, index) => (
-          <motion.article
-            className={currentTrackId === track.id ? 'track-row active' : 'track-row'}
-            key={track.id}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: Math.min(index * 0.018, 0.14), duration: 0.22, ease: 'easeOut' }}
-            onClick={() => onPlay(track.id)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                if (e.target === e.currentTarget) {
-                  e.preventDefault()
-                  onPlay(track.id)
-                }
-              }
-            }}
-          >
-            <button
-              className="track-play"
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onPlay(track.id)
+        {tracks.map((track, index) => {
+          const isFavorited = favoriteTrackIds.has(track.id)
+          return (
+            <motion.article
+              className={currentTrackId === track.id ? 'track-row active' : 'track-row'}
+              key={track.id}
+              initial={{ opacity: 0, y: 14 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '60px 0px' }}
+              transition={{
+                duration: 0.25,
+                ease: [0.22, 1, 0.36, 1],
+                delay: Math.min((index % 8) * 0.025, 0.12),
               }}
-              title={currentTrackId === track.id && isPlaying ? 'Pause' : 'Play'}
-              aria-label={currentTrackId === track.id && isPlaying ? 'Pause' : 'Play'}
+              whileHover={{ y: -2, scale: 1.003, transition: { duration: 0.15 } }}
+              whileTap={{ scale: 0.996 }}
+              onClick={() => onPlay(track.id)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  if (e.target === e.currentTarget) {
+                    e.preventDefault()
+                    onPlay(track.id)
+                  }
+                }
+              }}
             >
-              {currentTrackId === track.id && isPlaying ? (
-                <PauseFilled size={18} />
-              ) : (
-                <PlayFilled size={18} />
-              )}
-            </button>
-            <div className="mini-cover" style={{ '--cover-accent': track.accent } as CSSProperties}>
-              {track.coverUrl ? <img src={track.coverUrl} alt="" /> : <DiscFilled size={20} />}
-            </div>
-            <div className="track-meta">
-              <strong>{cleanDisplayTitle(track.title)}</strong>
-              <span>{track.artist}</span>
-            </div>
-            <span className="track-album">{track.album}</span>
-            <span className="track-time">{formatTime(track.duration)}</span>
-            <PlaylistDropdown
-              trackId={track.id}
-              trackTitle={cleanDisplayTitle(track.title)}
-              playlists={playlists}
-              onAddToPlaylist={onAddToPlaylist}
-              onRemoveFromPlaylist={onRemoveFromPlaylist}
-            />
-            <div className="track-row-btns" onClick={(e) => e.stopPropagation()}>
-              <button
+              <motion.button
+                className="track-play"
                 type="button"
-                className="track-edit-btn"
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
                 onClick={(e) => {
                   e.stopPropagation()
-                  onEditTrack(track)
+                  onPlay(track.id)
                 }}
-                title={`Rename or edit details for ${cleanDisplayTitle(track.title)}`}
-                aria-label={`Edit ${cleanDisplayTitle(track.title)}`}
+                title={currentTrackId === track.id && isPlaying ? 'Pause' : 'Play'}
+                aria-label={currentTrackId === track.id && isPlaying ? 'Pause' : 'Play'}
               >
-                <PencilFilled size={15} />
-              </button>
-              {activePlaylistId !== libraryId && (
-                <button
+                {currentTrackId === track.id && isPlaying ? (
+                  <PauseFilled size={18} />
+                ) : (
+                  <PlayFilled size={18} />
+                )}
+              </motion.button>
+              <div className="mini-cover" style={{ '--cover-accent': track.accent } as CSSProperties}>
+                {track.coverUrl ? <img src={track.coverUrl} alt="" /> : <DiscFilled size={20} />}
+              </div>
+              <div className="track-meta">
+                <div className="track-title-row">
+                  <strong>{cleanDisplayTitle(track.title)}</strong>
+                  {currentTrackId === track.id && isPlaying && (
+                    <div className="track-equalizer" title="Playing" aria-label="Now playing">
+                      <span className="eq-bar eq-1" />
+                      <span className="eq-bar eq-2" />
+                      <span className="eq-bar eq-3" />
+                    </div>
+                  )}
+                </div>
+                <span>{track.artist}</span>
+              </div>
+              <span className="track-album">{track.album}</span>
+              <span className="track-time">{formatTime(track.duration)}</span>
+
+              {/* Heart button to automatically add/remove from Favorites */}
+              <motion.button
+                type="button"
+                className={`track-heart-btn ${isFavorited ? 'is-favorited' : ''}`}
+                whileHover={{ scale: 1.15 }}
+                whileTap={{ scale: 0.85 }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onToggleFavorite(track.id)
+                }}
+                title={
+                  isFavorited
+                    ? `Remove "${cleanDisplayTitle(track.title)}" from Favorites`
+                    : `Add "${cleanDisplayTitle(track.title)}" to Favorites`
+                }
+                aria-label={
+                  isFavorited
+                    ? `Remove "${cleanDisplayTitle(track.title)}" from Favorites`
+                    : `Add "${cleanDisplayTitle(track.title)}" to Favorites`
+                }
+              >
+                {isFavorited ? (
+                  <HeartFilled size={19} color="#ff3b69" className="heart-icon-filled" />
+                ) : (
+                  <HeartOutline size={19} className="heart-icon-outline" />
+                )}
+              </motion.button>
+
+              <div className="track-row-btns" onClick={(e) => e.stopPropagation()}>
+                <motion.button
                   type="button"
-                  className="track-remove-from-playlist-btn"
+                  className="track-edit-btn"
+                  whileHover={{ scale: 1.08 }}
+                  whileTap={{ scale: 0.92 }}
                   onClick={(e) => {
                     e.stopPropagation()
-                    onRemoveFromPlaylist(activePlaylistId, track.id)
+                    onEditTrack(track)
                   }}
-                  title={`Remove "${cleanDisplayTitle(track.title)}" from ${activePlaylist?.name ?? 'playlist'}`}
-                  aria-label={`Remove "${cleanDisplayTitle(track.title)}" from ${activePlaylist?.name ?? 'playlist'}`}
+                  title={`Rename or edit details for ${cleanDisplayTitle(track.title)}`}
+                  aria-label={`Edit ${cleanDisplayTitle(track.title)}`}
                 >
-                  <CloseFilled size={15} />
-                </button>
-              )}
-            </div>
-          </motion.article>
-        ))}
+                  <PencilFilled size={15} />
+                </motion.button>
+                {activePlaylistId !== libraryId && (
+                  <motion.button
+                    type="button"
+                    className="track-remove-from-playlist-btn"
+                    whileHover={{ scale: 1.08 }}
+                    whileTap={{ scale: 0.92 }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onRemoveFromPlaylist?.(activePlaylistId, track.id)
+                    }}
+                    title={`Remove "${cleanDisplayTitle(track.title)}" from ${activePlaylist?.name ?? 'playlist'}`}
+                    aria-label={`Remove "${cleanDisplayTitle(track.title)}" from ${activePlaylist?.name ?? 'playlist'}`}
+                  >
+                    <CloseFilled size={15} />
+                  </motion.button>
+                )}
+              </div>
+            </motion.article>
+          )
+        })}
       </motion.div>
     </AnimatePresence>
   )

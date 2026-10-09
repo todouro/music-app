@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
+import { motion } from 'framer-motion'
 import { CloseFilled, PencilFilled } from '../icons'
 import type { Playlist } from '../../types'
 
@@ -38,14 +39,25 @@ export function RenamePlaylistModal({ playlist, onClose, onSave }: RenamePlaylis
   }
 
   return (
-    <div
+    <motion.div
       className="modal-backdrop"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby="rename-playlist-title"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
     >
-      <div className="modal-card modal-card-sm" onClick={(e) => e.stopPropagation()}>
+      <motion.div
+        className="modal-card modal-card-sm"
+        onClick={(e) => e.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.94, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.94, y: 12 }}
+        transition={{ type: 'spring', damping: 26, stiffness: 380 }}
+      >
         <header className="modal-header">
           <div className="delete-modal-title-group">
             <div className="rename-modal-icon-badge">
@@ -89,8 +101,8 @@ export function RenamePlaylistModal({ playlist, onClose, onSave }: RenamePlaylis
             </button>
           </footer>
         </form>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
 

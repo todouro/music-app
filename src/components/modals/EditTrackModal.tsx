@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import type { ChangeEvent, CSSProperties, FormEvent } from 'react'
+import { motion } from 'framer-motion'
 import {
   CloseFilled,
   DiscFilled,
@@ -94,14 +95,25 @@ export function EditTrackModal({ track, isPlaying, onClose, onSave }: EditTrackM
   }
 
   return (
-    <div
+    <motion.div
       className="modal-backdrop"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby="edit-modal-title"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
     >
-      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+      <motion.div
+        className="modal-card"
+        onClick={(e) => e.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.94, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.94, y: 12 }}
+        transition={{ type: 'spring', damping: 26, stiffness: 380 }}
+      >
         <header className="modal-header">
           <h3 id="edit-modal-title">Edit Track Details</h3>
           <button
@@ -259,8 +271,8 @@ export function EditTrackModal({ track, isPlaying, onClose, onSave }: EditTrackM
             </button>
           </footer>
         </form>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
 

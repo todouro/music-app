@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { libraryId, useMusicStore } from '../store/useMusicStore.ts'
+import { showToast } from '../store/useToastStore.ts'
 import { PlaybackQueue } from '../utils/queue.ts'
 import type { Playlist } from '../types.ts'
 
@@ -15,15 +16,18 @@ export function syncPlaylistQueue(
     activePlaylistId: string
     playlistTrackIds: string[]
     currentTrackId?: string
+    isPlaying?: boolean
     onTrackSelect?: (trackId: string) => void
   },
 ): void {
-  const { activePlaylistId, playlistTrackIds, currentTrackId, onTrackSelect } = params
+  const { activePlaylistId, playlistTrackIds, currentTrackId, isPlaying, onTrackSelect } = params
 
   if (!playlistTrackIds.length) {
     syncState.lastPlaylistId = activePlaylistId
     syncState.lastTrackIds = []
-    queue.clear()
+    if (!isPlaying) {
+      queue.clear()
+    }
     return
   }
 
@@ -39,9 +43,22 @@ export function syncPlaylistQueue(
   if (playlistChanged) {
     syncState.lastPlaylistId = activePlaylistId
     syncState.lastTrackIds = playlistTrackIds
-    const targetId = currentTrackId && currentIdInPlaylist ? currentTrackId : playlistTrackIds[0]
-    queue.start(playlistTrackIds, targetId)
-    if (currentTrackId !== targetId && onTrackSelect) {
+
+    // When actively listening, NEVER auto-switch or interrupt playback
+    if (isPlaying) {
+      if (currentTrackId && currentIdInPlaylist) {
+        queue.start(playlistTrackIds, currentTrackId)
+      }
+      return
+    }
+
+    const targetId = currentTrackId || playlistTrackIds[0]
+    if (playlistTrackIds.includes(targetId)) {
+      queue.start(playlistTrackIds, targetId)
+    } else if (playlistTrackIds[0]) {
+      queue.start(playlistTrackIds, playlistTrackIds[0])
+    }
+    if (!currentTrackId && targetId && onTrackSelect) {
       onTrackSelect(targetId)
     }
     return
@@ -49,9 +66,9 @@ export function syncPlaylistQueue(
 
   if (queue.size === 0) {
     syncState.lastTrackIds = playlistTrackIds
-    const targetId = currentTrackId && currentIdInPlaylist ? currentTrackId : playlistTrackIds[0]
+    const targetId = currentTrackId && currentIdInPlaylist ? currentTrackId : (currentTrackId || playlistTrackIds[0])
     queue.start(playlistTrackIds, targetId)
-    if (currentTrackId !== targetId && onTrackSelect) {
+    if (!currentTrackId && targetId && onTrackSelect) {
       onTrackSelect(targetId)
     }
     return
@@ -79,6 +96,7 @@ export function usePlaylistManager() {
     playlists,
     activePlaylistId,
     currentTrackId,
+    isPlaying,
     createPlaylist,
     deletePlaylist,
     renamePlaylist,
@@ -97,20 +115,23 @@ export function usePlaylistManager() {
       activePlaylistId,
       playlistTrackIds,
       currentTrackId,
+      isPlaying,
       onTrackSelect: setCurrentTrack,
     })
-  }, [activePlaylist, activePlaylistId, currentTrackId, setCurrentTrack, tracks])
+  }, [activePlaylist, activePlaylistId, currentTrackId, isPlaying, setCurrentTrack, tracks])
 
   function handleCreatePlaylist() {
     const name = newPlaylistName.trim()
     if (!name) return
     createPlaylist(name)
+    showToast(`Created playlist "${name}"`, { title: 'Playlist Created', type: 'success' })
     setNewPlaylistName('')
   }
 
   function handleConfirmDelete() {
     if (playlistToDelete) {
       deletePlaylist(playlistToDelete.id)
+      showToast(`Deleted playlist "${playlistToDelete.name}"`, { title: 'Playlist Deleted', type: 'info' })
       setPlaylistToDelete(null)
     }
   }
@@ -118,6 +139,7 @@ export function usePlaylistManager() {
   function handleConfirmRename(newName: string) {
     if (playlistToRename) {
       renamePlaylist(playlistToRename.id, newName)
+      showToast(`Renamed playlist to "${newName}"`, { title: 'Playlist Renamed', type: 'success' })
       setPlaylistToRename(null)
     }
   }

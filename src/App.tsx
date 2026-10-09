@@ -1,17 +1,22 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
+import type { CSSProperties } from 'react'
 import './App.css'
 import {
   PencilFilled,
+  PlusFilled,
   SearchFilled,
   TrashFilled,
 } from './components/icons'
 import {
+  AddToPlaylistModal,
   DeletePlaylistModal,
   EditTrackModal,
   HeroPlayer,
+  NotificationToast,
   PlayerBar,
   RenamePlaylistModal,
+  SettingsModal,
   Sidebar,
   TrackList,
 } from './components'
@@ -23,12 +28,15 @@ import {
   usePlaylistManager,
   useTrackFilter,
 } from './hooks'
-import { useMusicStore } from './store/useMusicStore'
-import { formatTime } from './utils/library'
-import type { Track } from './types'
+import { favoritesId, useMusicStore } from './store/useMusicStore'
+import { showToast } from './store/useToastStore'
+import { cleanDisplayTitle, formatTime } from './utils/library'
+import type { Playlist, Track } from './types'
 
 function App() {
   const [editingTrack, setEditingTrack] = useState<Track | null>(null)
+  const [playlistToAddSongs, setPlaylistToAddSongs] = useState<Playlist | null>(null)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   const {
     tracks,
@@ -37,6 +45,7 @@ function App() {
     isPlaying,
     shuffle,
     repeat,
+    themeMode,
     volume,
     initDesktopStorage,
     setActivePlaylist,
@@ -113,9 +122,42 @@ function App() {
   // 6. Dynamic cover color accent theme
   const heroTheme = useHeroTheme(currentTrack?.coverUrl, currentTrack?.accent)
 
+  // 7. Favorites toggle handler
+  const favoritesPlaylist = playlists.find((p) => p.id === favoritesId)
+  const favoriteTrackIds = new Set(favoritesPlaylist?.trackIds ?? [])
+
+  const handleToggleFavorite = (trackId: string) => {
+    const trk = tracks.find((t) => t.id === trackId)
+    const title = trk ? cleanDisplayTitle(trk.title) : 'Song'
+    if (favoriteTrackIds.has(trackId)) {
+      removeTrackFromPlaylist(favoritesId, trackId)
+      showToast(`Removed "${title}" from Favorites`, {
+        title: 'Favorites',
+        type: 'info',
+      })
+    } else {
+      addTrackToPlaylist(favoritesId, trackId)
+      showToast(`Added "${title}" to Favorites`, {
+        title: 'Favorites',
+        type: 'success',
+      })
+    }
+  }
+
+  const isAmbient = themeMode === 'ambient'
+
   return (
     <main
-      className="app-shell"
+      className={`app-shell theme-${themeMode}`}
+      style={
+        {
+          '--ambient-bg': isAmbient ? heroTheme.heroBg : 'transparent',
+          '--ambient-deep': isAmbient ? heroTheme.heroBgDeep : 'transparent',
+          '--ambient-border': isAmbient ? heroTheme.borderColor : 'var(--line)',
+          '--ambient-shadow': isAmbient ? heroTheme.shadowColor : 'rgba(0, 0, 0, 0.45)',
+          '--hero-background': isAmbient ? heroTheme.background : 'var(--panel)',
+        } as CSSProperties
+      }
       onDragOver={(event) => event.preventDefault()}
       onDrop={handleDrop}
     >
@@ -127,6 +169,7 @@ function App() {
         onCreate={handleCreatePlaylist}
         onRenamePlaylist={setPlaylistToRename}
         onDeletePlaylist={setPlaylistToDelete}
+        onOpenAddToPlaylist={setPlaylistToAddSongs}
         playlistName={newPlaylistName}
         setPlaylistName={setNewPlaylistName}
         onAddSongs={handleMusicFiles}
@@ -143,6 +186,7 @@ function App() {
         musicFolderName={musicFolderName}
         coverFolderName={coverFolderName}
         scanNotice={scanNotice}
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
       <section className="content">
@@ -160,6 +204,15 @@ function App() {
                 <h1>{activePlaylist?.name ?? 'Your Library'}</h1>
                 {activePlaylist && (
                   <div className="playlist-header-actions">
+                    <button
+                      type="button"
+                      className="add-to-playlist-header-btn"
+                      onClick={() => setPlaylistToAddSongs(activePlaylist)}
+                      title={`Add songs to "${activePlaylist.name}"`}
+                    >
+                      <PlusFilled size={14} />
+                      <span>Add to playlist</span>
+                    </button>
                     <button
                       type="button"
                       className="edit-playlist-header-btn"
@@ -202,6 +255,17 @@ function App() {
             />
           </label>
           <div className="library-stats">
+            {activePlaylist && (
+              <button
+                type="button"
+                className="library-tool-add-btn"
+                onClick={() => setPlaylistToAddSongs(activePlaylist)}
+                title={`Add songs to "${activePlaylist.name}"`}
+              >
+                <PlusFilled size={14} />
+                <span>Add to playlist</span>
+              </button>
+            )}
             <span>
               {trackCount} {trackCount === 1 ? 'song' : 'songs'} · {formatTime(totalDuration)}
             </span>
@@ -216,8 +280,19 @@ function App() {
           currentTrackId={currentTrack?.id}
           isPlaying={isPlaying}
           onPlay={(trackId) => handleTrackPlay(trackId, visibleTracks.map((t) => t.id))}
-          onAddToPlaylist={addTrackToPlaylist}
-          onRemoveFromPlaylist={removeTrackFromPlaylist}
+          onToggleFavorite={handleToggleFavorite}
+          onOpenAddToPlaylist={setPlaylistToAddSongs}
+          onRemoveFromPlaylist={(playlistId, trackId) => {
+            removeTrackFromPlaylist(playlistId, trackId)
+            const pl = playlists.find((p) => p.id === playlistId)
+            const trk = tracks.find((t) => t.id === trackId)
+            showToast(
+              trk
+                ? `Removed "${cleanDisplayTitle(trk.title)}" from ${pl?.name ?? 'playlist'}`
+                : `Removed from ${pl?.name ?? 'playlist'}`,
+              { title: 'Playlist Updated', type: 'info' },
+            )
+          }}
           onEditTrack={setEditingTrack}
           onAddSongs={handleMusicFiles}
           onAddMusicFolder={handleMusicFolder}
@@ -246,30 +321,89 @@ function App() {
         onVolume={setVolume}
       />
 
-      {editingTrack && (
-        <EditTrackModal
-          track={editingTrack}
-          isPlaying={isPlaying}
-          onClose={() => setEditingTrack(null)}
-          onSave={(updates) => updateTrack(editingTrack.id, updates)}
-        />
-      )}
+      <AnimatePresence>
+        {playlistToAddSongs && (
+          <AddToPlaylistModal
+            key="add-to-playlist-modal"
+            playlist={
+              playlists.find((p) => p.id === playlistToAddSongs.id) ?? playlistToAddSongs
+            }
+            allTracks={tracks}
+            onClose={() => setPlaylistToAddSongs(null)}
+            onAddTrack={(playlistId, trackId) => {
+              addTrackToPlaylist(playlistId, trackId)
+              const pl = playlists.find((p) => p.id === playlistId)
+              const trk = tracks.find((t) => t.id === trackId)
+              showToast(
+                trk
+                  ? `Added "${cleanDisplayTitle(trk.title)}" to ${pl?.name ?? 'playlist'}`
+                  : 'Added to playlist',
+                { title: 'Playlist Updated', type: 'success' },
+              )
+            }}
+            onRemoveTrack={(playlistId, trackId) => {
+              removeTrackFromPlaylist(playlistId, trackId)
+              const pl = playlists.find((p) => p.id === playlistId)
+              const trk = tracks.find((t) => t.id === trackId)
+              showToast(
+                trk
+                  ? `Removed "${cleanDisplayTitle(trk.title)}" from ${pl?.name ?? 'playlist'}`
+                  : 'Removed from playlist',
+                { title: 'Playlist Updated', type: 'info' },
+              )
+            }}
+          />
+        )}
+      </AnimatePresence>
 
-      {playlistToRename && (
-        <RenamePlaylistModal
-          playlist={playlistToRename}
-          onClose={() => setPlaylistToRename(null)}
-          onSave={handleConfirmRename}
-        />
-      )}
+      <AnimatePresence>
+        {editingTrack && (
+          <EditTrackModal
+            key="edit-track-modal"
+            track={editingTrack}
+            isPlaying={isPlaying}
+            onClose={() => setEditingTrack(null)}
+            onSave={(updates) => {
+              updateTrack(editingTrack.id, updates)
+              showToast('Track details saved successfully', { title: 'Track Updated', type: 'success' })
+              setEditingTrack(null)
+            }}
+          />
+        )}
+      </AnimatePresence>
 
-      {playlistToDelete && (
-        <DeletePlaylistModal
-          playlist={playlistToDelete}
-          onClose={() => setPlaylistToDelete(null)}
-          onConfirm={handleConfirmDelete}
-        />
-      )}
+      <AnimatePresence>
+        {playlistToRename && (
+          <RenamePlaylistModal
+            key="rename-playlist-modal"
+            playlist={playlistToRename}
+            onClose={() => setPlaylistToRename(null)}
+            onSave={handleConfirmRename}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {playlistToDelete && (
+          <DeletePlaylistModal
+            key="delete-playlist-modal"
+            playlist={playlistToDelete}
+            onClose={() => setPlaylistToDelete(null)}
+            onConfirm={handleConfirmDelete}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isSettingsOpen && (
+          <SettingsModal
+            key="settings-modal"
+            onClose={() => setIsSettingsOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <NotificationToast />
     </main>
   )
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent, RefObject } from 'react'
+import { motion } from 'framer-motion'
 import type { Howl } from 'howler'
 import ElasticSlider from './ElasticSlider'
 import {
@@ -209,46 +210,56 @@ export function PlayerBar({
       {/* 2. Center Transport Controls & Modern Scrubber */}
       <div className="transport">
         <div className="transport-buttons">
-          <button
+          <motion.button
             className={shuffle ? 'control active' : 'control'}
             type="button"
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.92 }}
             onClick={onShuffle}
             aria-label="Toggle shuffle"
           >
             <ShuffleFilled size={18} />
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             className="control"
             type="button"
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.92 }}
             onClick={onPrevious}
             aria-label="Previous track"
           >
             <SkipBackFilled size={20} />
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             className="play-button"
             type="button"
+            whileHover={{ scale: 1.06 }}
+            whileTap={{ scale: 0.92 }}
             onClick={onTogglePlay}
             aria-label={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? <PauseFilled size={24} /> : <PlayFilled size={24} />}
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             className="control"
             type="button"
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.92 }}
             onClick={onNext}
             aria-label="Next track"
           >
             <SkipForwardFilled size={20} />
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             className={repeat !== 'off' ? 'control active' : 'control'}
             type="button"
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.92 }}
             onClick={onRepeat}
             aria-label="Cycle repeat mode"
           >
             {repeat === 'one' ? <RepeatOneFilled size={18} /> : <RepeatFilled size={18} />}
-          </button>
+          </motion.button>
         </div>
 
         {/* Brand-new Modern Audio Progress Scrubber */}
