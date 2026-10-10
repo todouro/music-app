@@ -17,7 +17,6 @@ type MusicState = {
   repeat: RepeatMode
   themeMode: ThemeMode
   volume: number
-  showSidewaysVisualizer: boolean
   musicFolderPath?: string
   coverFolderPath?: string
   musicFolderName?: string
@@ -40,7 +39,6 @@ type MusicState = {
   cycleRepeat: () => void
   setThemeMode: (themeMode: ThemeMode) => void
   setVolume: (volume: number) => void
-  setShowSidewaysVisualizer: (show: boolean) => void
   updateTrack: (trackId: string, updates: Partial<Track>) => void
 }
 
@@ -62,7 +60,6 @@ function queueSave(state: MusicState) {
       shuffle: state.shuffle,
       repeat: state.repeat,
       themeMode: state.themeMode,
-      showSidewaysVisualizer: state.showSidewaysVisualizer,
       musicFolderPath: state.musicFolderPath,
       coverFolderPath: state.coverFolderPath,
       musicFolderName: state.musicFolderName,
@@ -97,7 +94,6 @@ export const useMusicStore = create<MusicState>()(
       repeat: 'off',
       themeMode: 'ambient',
       volume: 0.82,
-      showSidewaysVisualizer: true,
       musicFolderPath: undefined,
       coverFolderPath: undefined,
       musicFolderName: undefined,
@@ -181,7 +177,6 @@ export const useMusicStore = create<MusicState>()(
                   shuffle: typeof loaded.shuffle === 'boolean' ? loaded.shuffle : state.shuffle,
                   repeat: loaded.repeat || state.repeat,
                   themeMode: loaded.themeMode || state.themeMode,
-                  showSidewaysVisualizer: typeof loaded.showSidewaysVisualizer === 'boolean' ? loaded.showSidewaysVisualizer : state.showSidewaysVisualizer,
                   musicFolderPath: state.musicFolderPath || loaded.musicFolderPath,
                   coverFolderPath: state.coverFolderPath || loaded.coverFolderPath,
                   musicFolderName: state.musicFolderName || loaded.musicFolderName,
@@ -343,11 +338,6 @@ export const useMusicStore = create<MusicState>()(
         queueSave(get())
       },
 
-      setShowSidewaysVisualizer: (showSidewaysVisualizer) => {
-        set({ showSidewaysVisualizer })
-        queueSave(get())
-      },
-
       updateTrack: (trackId, updates) =>
         set((state) => {
           const tracks = state.tracks.map((track) =>
@@ -386,7 +376,6 @@ export const useMusicStore = create<MusicState>()(
         shuffle: state.shuffle,
         repeat: state.repeat,
         themeMode: state.themeMode,
-        showSidewaysVisualizer: state.showSidewaysVisualizer,
         musicFolderPath: state.musicFolderPath,
         coverFolderPath: state.coverFolderPath,
         musicFolderName: state.musicFolderName,

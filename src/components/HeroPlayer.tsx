@@ -2,7 +2,6 @@ import { AnimatePresence, motion } from 'framer-motion'
 import type { CSSProperties } from 'react'
 import { CdDisc } from './CdDisc'
 import { cleanDisplayTitle } from '../utils/library'
-import { useMusicStore } from '../store/useMusicStore'
 import type { CoverTheme } from '../hooks/useHeroTheme'
 import type { Track } from '../types'
 
@@ -19,8 +18,6 @@ export function HeroPlayer({
   heroTheme,
   onTogglePlay,
 }: HeroPlayerProps) {
-  const showSidewaysVisualizer = useMusicStore((s) => s.showSidewaysVisualizer)
-
   return (
     <section
       className={`hero-player ${heroTheme.isLight ? 'is-light-theme' : ''}`}
@@ -39,23 +36,6 @@ export function HeroPlayer({
         layout
         transition={{ type: 'spring', stiffness: 180, damping: 22 }}
       >
-        {showSidewaysVisualizer && (
-          <div
-            className={`sideways-visualizer ${isPlaying ? 'is-playing' : ''}`}
-            aria-hidden="true"
-          >
-            <div className="sideways-wing sideways-left">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <span key={i} className={`v-bar v-bar-${i + 1}`} />
-              ))}
-            </div>
-            <div className="sideways-wing sideways-right">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <span key={i} className={`v-bar v-bar-${i + 1}`} />
-              ))}
-            </div>
-          </div>
-        )}
         <AnimatePresence mode="wait">
           <motion.div
             key={currentTrack?.id ?? 'empty'}

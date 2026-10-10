@@ -17,7 +17,7 @@ type SettingsTab = 'looks' | 'shortcuts'
 
 export function SettingsModal({ onClose }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('looks')
-  const { themeMode, setThemeMode, showSidewaysVisualizer, setShowSidewaysVisualizer, tracks, playlists } = useMusicStore()
+  const { themeMode, setThemeMode, tracks, playlists } = useMusicStore()
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -139,47 +139,6 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                 >
                   <span className="ambient-badge-sparkle">✦</span>
                   <span>Ambient Mode</span>
-                </button>
-              </div>
-
-              {/* Feature Toggles */}
-              <div className="settings-toggle-group" style={{ marginBottom: '1.25rem', padding: '0.85rem 1rem', background: 'var(--panel)', borderRadius: '12px', border: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>Sideways Cover Visualizer</h4>
-                  <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: 'var(--muted)' }}>Display animated sideways audio equalizer bars next to cover artwork when playing.</p>
-                </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={showSidewaysVisualizer}
-                  aria-label="Toggle sideways cover visualizer"
-                  onClick={() => setShowSidewaysVisualizer(!showSidewaysVisualizer)}
-                  style={{
-                    width: '44px',
-                    height: '24px',
-                    borderRadius: '12px',
-                    background: showSidewaysVisualizer ? 'var(--accent, #6366f1)' : 'var(--line)',
-                    border: 'none',
-                    position: 'relative',
-                    cursor: 'pointer',
-                    transition: 'background 0.2s ease',
-                    flexShrink: 0
-                  }}
-                >
-                  <span
-                    style={{
-                      display: 'block',
-                      width: '18px',
-                      height: '18px',
-                      borderRadius: '50%',
-                      background: '#fff',
-                      position: 'absolute',
-                      top: '3px',
-                      left: showSidewaysVisualizer ? '23px' : '3px',
-                      transition: 'left 0.2s ease',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
-                    }}
-                  />
                 </button>
               </div>
 

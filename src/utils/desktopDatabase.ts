@@ -12,7 +12,6 @@ export interface DesktopLibraryPayload {
   shuffle: boolean
   repeat: RepeatMode
   themeMode?: ThemeMode
-  showSidewaysVisualizer?: boolean
   musicFolderPath?: string
   coverFolderPath?: string
   musicFolderName?: string
