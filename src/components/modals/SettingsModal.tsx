@@ -145,17 +145,11 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               {/* Visual Mode Option Cards */}
               <div className="theme-options-grid">
                 {/* Normal Mode Option */}
-                <div
+                <button
+                  type="button"
                   className={`theme-mode-card normal-card ${themeMode === 'normal' ? 'selected' : ''}`}
                   onClick={() => handleSelectMode('normal')}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      handleSelectMode('normal')
-                    }
-                  }}
+                  aria-pressed={themeMode === 'normal'}
                   aria-label="Normal mode: clean dark interface"
                 >
                   <div className="theme-card-preview normal-preview">
@@ -169,7 +163,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                   </div>
                   <div className="theme-card-info">
                     <div className="theme-card-title-row">
-                      <h4>Normal Mode</h4>
+                      <h4>Normal Studio Mode</h4>
                       <span className={`theme-status-tag ${themeMode === 'normal' ? 'active' : ''}`}>
                         {themeMode === 'normal' ? 'Active' : 'Select'}
                       </span>
@@ -178,21 +172,15 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                       Clean, understated dark studio interface. Solid neutral dark panels without background light flares or colored artwork bleeds.
                     </p>
                   </div>
-                </div>
+                </button>
 
-                {/* Ambient Mode Option */}
-                <div
+                {/* Dynamic Ambient Mode Option */}
+                <button
+                  type="button"
                   className={`theme-mode-card ambient-card ${themeMode === 'ambient' ? 'selected' : ''}`}
                   onClick={() => handleSelectMode('ambient')}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      handleSelectMode('ambient')
-                    }
-                  }}
-                  aria-label="Ambient mode: dynamic glowing interface"
+                  aria-pressed={themeMode === 'ambient'}
+                  aria-label="Dynamic Ambient mode: glowing artwork-synced interface"
                 >
                   <div className="theme-card-preview ambient-preview">
                     <div className="mini-player-wireframe ambient-wireframe">
@@ -206,16 +194,16 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                   </div>
                   <div className="theme-card-info">
                     <div className="theme-card-title-row">
-                      <h4>Ambient Mode</h4>
+                      <h4>Dynamic Ambiance</h4>
                       <span className={`theme-status-tag ${themeMode === 'ambient' ? 'active' : ''}`}>
                         {themeMode === 'ambient' ? 'Active' : 'Select'}
                       </span>
                     </div>
                     <p>
-                      Dynamic background glow and responsive reflections that blend the current track&apos;s artwork colors seamlessly across the entire app.
+                      Dynamic background glow and responsive reflections that blend the current track&apos;s artwork colors seamlessly across the entire app interface.
                     </p>
                   </div>
-                </div>
+                </button>
               </div>
             </div>
           )}
