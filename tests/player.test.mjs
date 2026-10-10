@@ -17,6 +17,7 @@ import {
   hydrateTracksArtwork,
   sanitizeArtworkFilename,
 } from '../src/utils/artworkStorage.ts'
+import { migrateDesktopLibraryPayload } from '../src/utils/desktopDatabase.ts'
 import { nativeTracksFromPaths, scanNativeDroppedPaths } from '../src/utils/nativeFileSystem.ts'
 import { useMusicStore } from '../src/store/useMusicStore.ts'
 import { syncPlaylistQueue } from '../src/hooks/usePlaylistManager.ts'
@@ -266,6 +267,43 @@ test('extracts title, artist, album, and embedded artwork from bounded tag bytes
   assert.notEqual(detected.coverBytes, undefined)
   assert.equal(detected.coverMime, 'image/jpeg')
   assert.deepEqual(Array.from(detected.coverBytes || []), Array.from(fakeJpeg))
+})
+
+test('desktop payload migration safely normalizes legacy or partial data', () => {
+  const migrated = migrateDesktopLibraryPayload({
+    volume: 0.9,
+    shuffle: true,
+    repeat: 'all',
+    themeMode: 'ambient',
+    tracks: [{
+      id: 'native:song1.mp3',
+      title: 'Song One',
+      artist: 'Artist One',
+      album: 'Album One',
+      duration: 180,
+      fileName: 'song1.mp3',
+      audioUrl: 'blob:temp-song',
+      filePath: '/music/song1.mp3',
+      coverUrl: 'data:image/png;base64,abc',
+      coverPath: '/appdata/artwork/song1.jpg',
+      accent: '#ffffff',
+    }],
+    playlists: [{ id: 'favorites', name: 'Favorites', trackIds: ['native:song1.mp3'], createdAt: 1 }],
+    activePlaylistId: 'favorites',
+  })
+
+  assert.equal(migrated?.version, 2)
+  assert.equal(migrated?.repeat, 'all')
+  assert.equal(migrated?.tracks[0].audioUrl, '/music/song1.mp3')
+  assert.equal(migrated?.tracks[0].coverUrl, '/appdata/artwork/song1.jpg')
+
+  const invalid = migrateDesktopLibraryPayload({ volume: 'bad', tracks: 'oops' })
+  assert.notEqual(invalid, null)
+  assert.equal(Array.isArray(invalid?.tracks), true)
+  assert.equal(invalid?.volume, 0.82)
+
+  const rejected = migrateDesktopLibraryPayload('not-an-object')
+  assert.equal(rejected, null)
 })
 
 test('sanitizeTrackForPersistence strips temporary blob and data URLs while preserving coverPath', () => {

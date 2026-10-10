@@ -8,7 +8,7 @@ export type Track = {
   album: string
   duration: number
   fileName: string
-  audioUrl: string
+  audioUrl?: string
   filePath?: string
   coverUrl?: string
   coverPath?: string
