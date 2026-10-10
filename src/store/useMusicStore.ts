@@ -307,7 +307,7 @@ export const useMusicStore = create<MusicState>()(
       },
 
       setCurrentTrack: (currentTrackId) => {
-        set({ currentTrackId, isPlaying: true })
+        set({ currentTrackId })
         queueSave(get())
       },
 

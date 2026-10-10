@@ -22,9 +22,10 @@
   padding-bottom: 0;
   color: var(--text);
   background:
-    radial-gradient(120% 70% at 50% -10%, var(--ambient-bg, rgba(255, 255, 255, 0.08)) 0%, transparent 75%),
-    radial-gradient(circle 900px at 90% 15%, var(--ambient-deep, rgba(255, 255, 255, 0.04)) 0%, transparent 65%),
-    radial-gradient(circle 700px at 15% 65%, var(--ambient-deep, rgba(255, 255, 255, 0.03)) 0%, transparent 60%),
+    radial-gradient(140% 90% at 50% 0%, var(--ambient-bg, rgba(255, 255, 255, 0.08)) 0%, transparent 80%),
+    radial-gradient(circle 900px at 90% 15%, var(--ambient-deep, rgba(255, 255, 255, 0.04)) 0%, transparent 70%),
+    radial-gradient(circle 800px at 15% 65%, var(--ambient-deep, rgba(255, 255, 255, 0.03)) 0%, transparent 65%),
+    radial-gradient(circle 1000px at 50% 100%, var(--ambient-bg, rgba(255, 255, 255, 0.05)) 0%, transparent 75%),
     linear-gradient(180deg, rgba(14, 16, 17, 0.2) 0%, rgba(9, 10, 10, 0.95) 70%, var(--bg) 100%),
     var(--bg);
   position: relative;
@@ -51,10 +52,12 @@
   background: rgba(14, 16, 17, 0.72);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
+  box-shadow: inset -1px 0 20px var(--ambient-shadow, transparent);
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
+  transition: box-shadow 0.6s ease, border-color 0.6s ease;
 }
 
 .brand {
@@ -1707,6 +1710,9 @@ h3 {
   gap: 18px;
   padding: 14px 18px;
   border-radius: 24px;
+  border: 1px solid var(--ambient-border, var(--line));
+  box-shadow: 0 16px 48px -8px var(--ambient-shadow, rgba(0, 0, 0, 0.5));
+  transition: border-color 0.6s ease, box-shadow 0.6s ease;
 }
 
 .player-track {
