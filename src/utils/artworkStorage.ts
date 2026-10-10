@@ -126,16 +126,20 @@ export async function saveCustomArtwork(
 }
 
 /**
- * Strips temporary blob: and data: URLs from tracks before saving to storage.
- * Preserves coverPath and durable URLs.
+ * Strips temporary in-memory URLs from tracks before saving to storage.
+ * Preserves durable file path references and any explicitly selected custom artwork location.
  */
 export function sanitizeTrackForPersistence(track: Track): Track {
-  const isTemporary = Boolean(
-    track.coverUrl && (track.coverUrl.startsWith('blob:') || track.coverUrl.startsWith('data:')),
-  )
+  const isTemporaryUrl = (value?: string) =>
+    Boolean(value && (value.startsWith('blob:') || value.startsWith('data:')))
+
+  const nextAudioUrl = isTemporaryUrl(track.audioUrl) ? undefined : track.audioUrl
+  const nextCoverUrl = isTemporaryUrl(track.coverUrl) ? undefined : track.coverUrl
+
   return {
     ...track,
-    coverUrl: isTemporary ? undefined : track.coverUrl,
+    audioUrl: nextAudioUrl,
+    coverUrl: nextCoverUrl,
   }
 }
 
@@ -145,23 +149,24 @@ export function sanitizeTracksForPersistence(tracks: Track[]): Track[] {
 
 /**
  * Hydrates artwork on track load:
- * If track has coverPath, regenerates coverUrl using toNativeAssetUrl(coverPath).
- * If track has a temporary blob: or data: URL, discards it.
+ * Rebuilds durable URLs from file paths and removes transient blob/data URLs.
  */
 export function hydrateTrackArtwork(track: Track): Track {
   let coverUrl = track.coverUrl
+  let audioUrl = track.audioUrl
 
-  // Discard any ephemeral blob: or data: URLs
   if (coverUrl && (coverUrl.startsWith('blob:') || coverUrl.startsWith('data:'))) {
     coverUrl = undefined
   }
 
-  // Regenerate from durable coverPath if available
+  if (audioUrl && (audioUrl.startsWith('blob:') || audioUrl.startsWith('data:'))) {
+    audioUrl = undefined
+  }
+
   if (track.coverPath) {
     coverUrl = toNativeAssetUrl(track.coverPath)
   }
 
-  let audioUrl = track.audioUrl
   if (track.filePath) {
     audioUrl = toNativeAssetUrl(track.filePath)
   }
