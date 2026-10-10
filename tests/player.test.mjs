@@ -813,14 +813,34 @@ test('Windows setup.exe Tauri configuration and capabilities include required NS
   )
   assert.equal(capability.permissions.includes('core:default'), true)
   assert.equal(capability.permissions.includes('dialog:default'), true)
-  assert.equal(capability.permissions.includes('fs:read-all'), true)
-  assert.equal(capability.permissions.includes('fs:allow-appdata-read-recursive'), true)
-  assert.equal(capability.permissions.includes('fs:allow-appdata-write-recursive'), true)
-  assert.equal(capability.permissions.includes('fs:allow-appdata-meta-recursive'), true)
+
+  // Keep the default capability least-privilege: do not grant blanket filesystem access.
+  assert.equal(capability.permissions.includes('fs:read-all'), false)
+  assert.equal(capability.permissions.includes('fs:default'), false)
+  for (const permission of [
+    'fs:allow-read-dir',
+    'fs:allow-open',
+    'fs:allow-read',
+    'fs:allow-seek',
+    'fs:allow-fstat',
+    'fs:allow-exists',
+    'fs:allow-mkdir',
+    'fs:allow-read-text-file',
+    'fs:allow-write-text-file',
+    'fs:allow-write-file',
+    'fs:allow-appdata-read-recursive',
+    'fs:allow-appdata-write-recursive',
+    'fs:allow-appdata-meta-recursive',
+  ]) {
+    assert.equal(capability.permissions.includes(permission), true, `Missing required permission: ${permission}`)
+  }
+
   const scopeEntry = capability.permissions.find(
     (entry) => typeof entry === 'object' && entry !== null && entry.identifier === 'fs:scope',
   )
   assert.notEqual(scopeEntry, undefined)
+  assert.deepEqual(scopeEntry.allow, [{ path: '$APPDATA/**' }])
+  assert.deepEqual(tauriConf.app?.security?.assetProtocol?.scope, ['$APPDATA/**'])
 })
 
 test('scanNativeDroppedPaths classifies dropped audio and cover files and nativeTracksFromPaths deduplicates batch paths', async () => {
