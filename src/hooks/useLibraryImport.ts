@@ -282,15 +282,24 @@ export function useLibraryImport() {
         const { coverPaths } = await scanNativeFolder(currentPath)
         if (coverPaths.length > 0) {
           const { lookup, urls } = nativeCoversFromPaths(coverPaths)
-          if (urls.length > 0) {
+          const existingLookup = useMusicStore.getState().coverLookup
+          let newCoversCount = 0
+          for (const key of lookup.keys()) {
+            if (!existingLookup.has(key)) {
+              newCoversCount++
+            }
+          }
+          if (newCoversCount > 0) {
             addCovers(lookup, urls)
             showNotice(
-              urls.length === 1
-                ? '1 cover artwork updated successfully'
-                : `${urls.length} cover artworks updated successfully`,
+              newCoversCount === 1
+                ? '1 new cover artwork imported'
+                : `${newCoversCount} new cover artworks imported`,
               'success',
-              'Covers Updated',
+              'Covers Imported',
             )
+          } else {
+            showNotice('Cover folder is up to date (no new files)', 'info', 'Covers Up to Date')
           }
         } else {
           showNotice('Cover folder is up to date (no new files)', 'info', 'Covers Up to Date')
