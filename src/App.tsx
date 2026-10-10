@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import './App.css'
 import {
@@ -112,11 +112,37 @@ function App() {
     handleDrop,
   } = useLibraryImport()
 
-  // 5. Global keyboard shortcuts (e.g. Space to play/pause, media keys)
+  // 5. Global keyboard shortcuts
+  const previousVolumeRef = useRef<number>(0.82)
   useKeyboardShortcuts({
     onTogglePlay: () => togglePlay(visibleTracks[0]?.id, visibleTracks.map((t) => t.id)),
     onPrevious: playPrevious,
     onNext: playNext,
+    onSeekBackward: () => {
+      const nextSeek = Math.max(0, seek - 5)
+      handleSeek(nextSeek)
+    },
+    onSeekForward: () => {
+      const duration = currentTrack?.duration || audioRef.current?.duration() || 0
+      const nextSeek = Math.min(duration, seek + 5)
+      handleSeek(nextSeek)
+    },
+    onVolumeUp: () => {
+      setVolume(Math.min(1, Math.round((volume + 0.05) * 100) / 100))
+    },
+    onVolumeDown: () => {
+      setVolume(Math.max(0, Math.round((volume - 0.05) * 100) / 100))
+    },
+    onToggleMute: () => {
+      if (volume > 0) {
+        previousVolumeRef.current = volume
+        setVolume(0)
+      } else {
+        setVolume(previousVolumeRef.current || 0.82)
+      }
+    },
+    onToggleShuffle: toggleShuffle,
+    onCycleRepeat: cycleRepeat,
   })
 
   // 6. Dynamic cover color accent theme
@@ -158,6 +184,7 @@ function App() {
           '--hero-background': isAmbient ? heroTheme.background : 'var(--panel)',
         } as CSSProperties
       }
+      onContextMenu={(event) => event.preventDefault()}
       onDragOver={(event) => event.preventDefault()}
       onDrop={handleDrop}
     >
