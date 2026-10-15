@@ -1,6 +1,7 @@
 export { CdDisc } from './CdDisc'
 export { HeroPlayer } from './HeroPlayer'
 export { Sidebar } from './Sidebar'
+export { PlaylistActionMenu } from './PlaylistActionMenu'
 export { TrackList } from './TrackList'
 export { PlaylistDropdown } from './PlaylistDropdown'
 export { PlayerBar } from './PlayerBar'
