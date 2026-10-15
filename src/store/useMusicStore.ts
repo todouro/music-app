@@ -50,23 +50,24 @@ export const libraryId = 'library'
 export const favoritesId = 'favorites'
 
 function ensureFavoritesPlaylist(playlists: Playlist[]): Playlist[] {
-  const firstFavoriteIndex = playlists.findIndex((playlist) => playlist.id === favoritesId)
+  const userPlaylists = playlists.filter((playlist) => playlist.id !== 'night-drive')
+  const firstFavoriteIndex = userPlaylists.findIndex((playlist) => playlist.id === favoritesId)
 
   if (firstFavoriteIndex === -1) {
     return [
       { id: favoritesId, name: 'Favorites', trackIds: [], createdAt: Date.now() },
-      ...playlists,
+      ...userPlaylists,
     ]
   }
 
-  const existing = playlists[firstFavoriteIndex]
+  const existing = userPlaylists[firstFavoriteIndex]
   const favorite: Playlist = {
     ...existing,
     name: 'Favorites',
     trackIds: Array.isArray(existing.trackIds) ? existing.trackIds : [],
   }
 
-  return playlists.flatMap((playlist, index) =>
+  return userPlaylists.flatMap((playlist, index) =>
     playlist.id !== favoritesId
       ? [playlist]
       : index === firstFavoriteIndex
@@ -109,12 +110,6 @@ export const useMusicStore = create<MusicState>()(
           name: 'Favorites',
           trackIds: [],
           createdAt: Date.now(),
-        },
-        {
-          id: 'night-drive',
-          name: 'Night Drive',
-          trackIds: [],
-          createdAt: Date.now() + 1,
         },
       ],
       coverPool: [],
@@ -197,10 +192,16 @@ export const useMusicStore = create<MusicState>()(
                 }
                 const mergedPlaylists = ensureFavoritesPlaylist(Array.from(playlistMap.values()))
 
-                const activePlaylistId =
+                const requestedActivePlaylistId =
                   state.activePlaylistId !== libraryId && state.activePlaylistId
                     ? state.activePlaylistId
                     : loaded.activePlaylistId || state.activePlaylistId
+                const activePlaylistId =
+                  requestedActivePlaylistId === 'night-drive' ||
+                  (requestedActivePlaylistId !== libraryId &&
+                    !mergedPlaylists.some((playlist) => playlist.id === requestedActivePlaylistId))
+                    ? libraryId
+                    : requestedActivePlaylistId
 
                 const currentTrackId =
                   state.currentTrackId || loaded.currentTrackId || mergedTracks[0]?.id
@@ -226,6 +227,7 @@ export const useMusicStore = create<MusicState>()(
                 // queue a save so disk storage reflects the merged state.
                 if (
                   state.tracks.length > 0 ||
+                  mergedPlaylists.length !== playlistMap.size ||
                   state.playlists.length > loaded.playlists.length ||
                   !state.playlists.some((playlist) => playlist.id === favoritesId) ||
                   !loaded.playlists.some((playlist) => playlist.id === favoritesId)
@@ -470,6 +472,41 @@ export const useMusicStore = create<MusicState>()(
       // library out of Zustand's synchronous localStorage write avoids serializing
       // thousands of tracks and artwork metadata on every store update.
       // The browser build still persists its library for compatibility.
+      version: 2,
+      migrate: (persistedState) => {
+        const persisted = persistedState as Partial<MusicState>
+        const playlists = ensureFavoritesPlaylist(
+          Array.isArray(persisted.playlists) ? persisted.playlists : [],
+        )
+        const requestedActivePlaylistId = persisted.activePlaylistId ?? libraryId
+        const activePlaylistId =
+          requestedActivePlaylistId === 'night-drive' ||
+          (requestedActivePlaylistId !== libraryId &&
+            !playlists.some((playlist) => playlist.id === requestedActivePlaylistId))
+            ? libraryId
+            : requestedActivePlaylistId
+        return { ...persisted, playlists, activePlaylistId }
+      },
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<MusicState>
+        const playlists = ensureFavoritesPlaylist(
+          Array.isArray(persisted.playlists) ? persisted.playlists : currentState.playlists,
+        )
+        const requestedActivePlaylistId = persisted.activePlaylistId ?? currentState.activePlaylistId
+        const activePlaylistId =
+          requestedActivePlaylistId === 'night-drive' ||
+          (requestedActivePlaylistId !== libraryId &&
+            !playlists.some((playlist) => playlist.id === requestedActivePlaylistId))
+            ? libraryId
+            : requestedActivePlaylistId
+
+        return {
+          ...currentState,
+          ...persisted,
+          playlists,
+          activePlaylistId,
+        }
+      },
       partialize: (state) => {
         const preferences = {
           volume: state.volume,
