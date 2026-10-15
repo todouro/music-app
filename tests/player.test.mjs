@@ -1391,7 +1391,7 @@ test('search results animate individual rows out even when no tracks match', () 
   // Keep TrackList mounted between search updates so its AnimatePresence can retain exiting rows.
   assert.match(app, /key="track-list-results"/)
   assert.doesNotMatch(app, /key=\{trackCount === 0 \? 'track-list-empty'/)
-  assert.match(trackList, /<AnimatePresence mode="wait" initial=\{false\}>[\s\S]*?tracks\.length === 0 \? \([\s\S]*?renderEmptyState\(\)[\s\S]*?<AnimatePresence initial=\{false\} mode="popLayout" propagate>/)
+  assert.match(trackList, /<AnimatePresence mode="sync" initial=\{false\}>[\s\S]*?tracks\.length === 0 \? \([\s\S]*?renderEmptyState\(\)[\s\S]*?<AnimatePresence initial=\{false\} mode="popLayout" propagate>/)
   assert.match(trackList, /exit=\{isCurrentTrack \? \{ opacity: 0 \} : \{ opacity: 0, y: -22 \}\}/)
 })
 
