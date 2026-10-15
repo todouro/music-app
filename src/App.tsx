@@ -2,12 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { DownloadSection } from './components/DownloadSection'
 import { useEffect, useRef, useState } from 'react'
 import './App.css'
-import {
-  PencilFilled,
-  PlusFilled,
-  SearchFilled,
-  TrashFilled,
-} from './components/icons'
+import { SearchFilled } from './components/icons'
 import {
   AddToPlaylistModal,
   DeletePlaylistModal,
@@ -16,6 +11,7 @@ import {
   HeroPlayer,
   NotificationToast,
   PlayerBar,
+  PlaylistActionMenu,
   RenamePlaylistModal,
   SettingsModal,
   Sidebar,
@@ -299,35 +295,12 @@ function App() {
               >
                 <h1>{activePlaylist?.name ?? 'Your Library'}</h1>
                 {activePlaylist && (
-                  <div className="playlist-header-actions">
-                    <button
-                      type="button"
-                      className="add-to-playlist-header-btn"
-                      onClick={() => setPlaylistToAddSongs(activePlaylist)}
-                      title={`Add songs to "${activePlaylist.name}"`}
-                    >
-                      <PlusFilled size={14} />
-                      <span>Add to playlist</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="edit-playlist-header-btn"
-                      onClick={() => setPlaylistToRename(activePlaylist)}
-                      title={`Rename playlist "${activePlaylist.name}"`}
-                    >
-                      <PencilFilled size={14} />
-                      <span>Rename</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="delete-playlist-header-btn"
-                      onClick={() => setPlaylistToDelete(activePlaylist)}
-                      title={`Delete playlist "${activePlaylist.name}"`}
-                    >
-                      <TrashFilled size={14} />
-                      <span>Delete</span>
-                    </button>
-                  </div>
+                  <PlaylistActionMenu
+                    playlist={activePlaylist}
+                    onAddToPlaylist={setPlaylistToAddSongs}
+                    onRenamePlaylist={setPlaylistToRename}
+                    onDeletePlaylist={setPlaylistToDelete}
+                  />
                 )}
               </motion.div>
             </AnimatePresence>
@@ -351,17 +324,6 @@ function App() {
             />
           </label>
           <div className="library-stats">
-            {activePlaylist && (
-              <button
-                type="button"
-                className="library-tool-add-btn"
-                onClick={() => setPlaylistToAddSongs(activePlaylist)}
-                title={`Add songs to "${activePlaylist.name}"`}
-              >
-                <PlusFilled size={14} />
-                <span>Add to playlist</span>
-              </button>
-            )}
             <span>
               {trackCount} {trackCount === 1 ? 'song' : 'songs'} · {formatTime(totalDuration)}
             </span>
@@ -526,11 +488,15 @@ function App() {
           <FirstRunSetupModal
             key="first-run-setup-modal"
             step={visibleFirstRunStep}
-            musicFolderName={musicFolderName}
+            musicFolderName={musicFolderName || (configuredMusicFolderPath ? 'Your music folder' : undefined)}
             coverFolderName={coverFolderName}
             busyAction={firstRunBusyAction}
             onChooseMusicFolder={handleFirstRunChooseMusic}
             onChooseCoverFolder={handleFirstRunChooseCovers}
+            onSkipMusic={() => {
+              setFirstRunSetupStep('covers')
+              setIsFirstRunSetupInProgress(false)
+            }}
             onSkipCoverArt={finishFirstRunSetup}
             onSetUpLater={finishFirstRunSetup}
           />
