@@ -96,7 +96,7 @@ export function TrackList({
   // virtual window before paint so stale scroll offsets never leave blank space.
   useLayoutEffect(() => {
     setVisibleRange({ start: 0, end: 32 })
-  }, [filterQuery, activePlaylistId])
+  }, [filterQuery, activePlaylistId, tracks.length])
 
   const updateVisibleRange = useCallback(() => {
     const list = listRef.current
@@ -264,7 +264,7 @@ export function TrackList({
   }
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
+    <AnimatePresence mode="sync" initial={false}>
       {tracks.length === 0 ? (
         renderEmptyState()
       ) : (
@@ -392,8 +392,17 @@ export function TrackList({
                   >
                     <EllipsisVertical size={18} />
                   </button>
-                  {openMenuTrackId === track.id && (
-                    <div className="track-action-menu-popover" role="menu" aria-label={`Actions for ${cleanDisplayTitle(track.title)}`}>
+                  <AnimatePresence initial={false}>
+                    {openMenuTrackId === track.id && (
+                    <motion.div
+                      className="track-action-menu-popover"
+                      role="menu"
+                      aria-label={`Actions for ${cleanDisplayTitle(track.title)}`}
+                      initial={{ opacity: 0, y: -5, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -3, scale: 0.98 }}
+                      transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
+                    >
                       <button
                         type="button"
                         role="menuitem"
@@ -421,8 +430,9 @@ export function TrackList({
                         <TrashFilled size={14} />
                         <span>Delete</span>
                       </button>
-                    </div>
-                  )}
+                    </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
                 {activePlaylistId !== libraryId && (
                   <motion.button
