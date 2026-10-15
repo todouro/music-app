@@ -9,15 +9,14 @@ import {
   FolderImageFilled,
   FolderMusicFilled,
   HeartFilled,
-  PencilFilled,
   PlaylistFilled,
   PlusFilled,
   RefreshFilled,
   SettingsFilled,
-  TrashFilled,
 } from './icons'
 import { favoritesId, libraryId } from '../store/useMusicStore'
 import type { Playlist, Track } from '../types'
+import { PlaylistActionMenu } from './PlaylistActionMenu'
 
 export type SidebarProps = {
   activePlaylistId: string
@@ -139,7 +138,7 @@ export function Sidebar({
             role="button"
             tabIndex={0}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
+              if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
                 e.preventDefault()
                 onSelect(playlist.id)
               }
@@ -149,49 +148,12 @@ export function Sidebar({
             <span className="nav-playlist-name">{playlist.name}</span>
             <em>{playlist.trackIds.length}</em>
             <div className="nav-item-actions">
-              {onOpenAddToPlaylist && (
-                <button
-                  type="button"
-                  className="nav-action-btn add-songs"
-                  title={`Add songs to "${playlist.name}"`}
-                  aria-label={`Add songs to "${playlist.name}"`}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onOpenAddToPlaylist(playlist)
-                  }}
-                >
-                  <PlusFilled size={13} />
-                </button>
-              )}
-              {playlist.id !== favoritesId && (
-                <>
-                  <button
-                    type="button"
-                    className="nav-action-btn edit"
-                    title={`Rename playlist "${playlist.name}"`}
-                    aria-label={`Rename playlist "${playlist.name}"`}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onRenamePlaylist(playlist)
-                    }}
-                  >
-                    <PencilFilled size={13} />
-                  </button>
-                  <button
-                    type="button"
-                    className="nav-action-btn delete"
-                    title={`Delete playlist "${playlist.name}"`}
-                    aria-label={`Delete playlist "${playlist.name}"`}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onDeletePlaylist(playlist)
-                    }}
-                  >
-                    <TrashFilled size={13} />
-                  </button>
-
-                </>
-              )}
+              <PlaylistActionMenu
+                playlist={playlist}
+                onAddToPlaylist={onOpenAddToPlaylist}
+                onRenamePlaylist={onRenamePlaylist}
+                onDeletePlaylist={onDeletePlaylist}
+              />
             </div>
           </div>
         ))}
