@@ -1395,13 +1395,54 @@ test('search results animate individual rows out even when no tracks match', () 
   assert.match(trackList, /exit=\{isCurrentTrack \? \{ opacity: 0 \} : \{ opacity: 0, y: -22 \}\}/)
 })
 
-test('skipping first-run music folder setup dismisses onboarding without a configured folder', () => {
+test('skipping music-folder import advances first-run setup to cover-art import', () => {
   const app = fs.readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  const setup = fs.readFileSync(new URL('../src/components/modals/FirstRunSetupModal.tsx', import.meta.url), 'utf8')
 
   assert.match(
     app,
     /!firstRunSetupCompleted &&\s*\(!configuredMusicFolderPath \|\| tracks\.length === 0 \|\| isFirstRunSetupInProgress\)/,
   )
+  assert.match(app, /onSkipMusic=\{\(\) => \{\s*setFirstRunSetupStep\('covers'\)/)
   assert.match(app, /onSetUpLater=\{finishFirstRunSetup\}/)
   assert.match(app, /onSkipCoverArt=\{finishFirstRunSetup\}/)
+  assert.match(setup, /onClick=\{onSkipMusic\}[\s\S]*?Skip music folder/)
+  assert.match(setup, /Music import is skipped for now/)
+})
+
+
+test('single-song playlist updates cannot remain behind an empty-state exit', () => {
+  const trackList = fs.readFileSync(new URL('../src/components/TrackList.tsx', import.meta.url), 'utf8')
+  assert.match(trackList, /setVisibleRange\(\{ start: 0, end: 32 \}\)\s*\}, \[filterQuery, activePlaylistId, tracks\.length\]\)/)
+  assert.match(trackList, /<AnimatePresence mode="sync" initial=\{false\}>/)
+})
+
+test('track and playlist action menus use subtle enter and exit animations', () => {
+  const trackList = fs.readFileSync(new URL('../src/components/TrackList.tsx', import.meta.url), 'utf8')
+  const playlistMenu = fs.readFileSync(new URL('../src/components/PlaylistActionMenu.tsx', import.meta.url), 'utf8')
+  assert.match(trackList, /<AnimatePresence initial=\{false\}>[\s\S]*?className="track-action-menu-popover"[\s\S]*?initial=\{\{ opacity: 0, y: -5, scale: 0\.98 \}\}/)
+  assert.match(playlistMenu, /className="playlist-action-menu-popover"[\s\S]*?initial=\{\{ opacity: 0, y: -5, scale: 0\.98 \}\}[\s\S]*?exit=\{\{ opacity: 0, y: -3, scale: 0\.98 \}\}/)
+  assert.match(playlistMenu, /Add to playlist[\s\S]*?Rename[\s\S]*?Delete/)
+})
+
+test('add-to-playlist search reserves a single aligned row for text and clear button', () => {
+  const css = fs.readFileSync(new URL('../src/App.css', import.meta.url), 'utf8')
+  assert.match(css, /\.add-playlist-search-box \{[\s\S]*?grid-template-columns: auto minmax\(0, 1fr\) auto;/)
+  assert.match(css, /\.add-playlist-search-box input \{[\s\S]*?align-self: center;[\s\S]*?font: inherit;/)
+})
+
+test('legacy Night Drive is removed from defaults and persisted playlists', () => {
+  const store = fs.readFileSync(new URL('../src/store/useMusicStore.ts', import.meta.url), 'utf8')
+  assert.doesNotMatch(store, /id: 'night-drive',\s*name: 'Night Drive'/)
+  assert.match(store, /playlists\.filter\(\(playlist\) => playlist.id !== 'night-drive'\)/)
+  assert.match(store, /version: 2,[\s\S]*?migrate: \(persistedState\)/)
+  assert.match(store, /merge: \(persistedState, currentState\) =>/)
+})
+
+test('playlist actions are accessible from the playlist-name menu, not duplicated beside search', () => {
+  const app = fs.readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  const sidebar = fs.readFileSync(new URL('../src/components/Sidebar.tsx', import.meta.url), 'utf8')
+  assert.match(app, /<PlaylistActionMenu[\s\S]*?onAddToPlaylist=\{setPlaylistToAddSongs\}/)
+  assert.match(sidebar, /<PlaylistActionMenu[\s\S]*?onAddToPlaylist=\{onOpenAddToPlaylist\}/)
+  assert.doesNotMatch(app, /className="library-tool-add-btn"/)
 })
