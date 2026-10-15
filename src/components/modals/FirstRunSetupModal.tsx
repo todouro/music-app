@@ -15,6 +15,7 @@ export type FirstRunSetupModalProps = {
   busyAction?: 'music' | 'covers' | null
   onChooseMusicFolder: () => void
   onChooseCoverFolder: () => void
+  onSkipMusic: () => void
   onSkipCoverArt: () => void
   onSetUpLater: () => void
 }
@@ -26,6 +27,7 @@ export function FirstRunSetupModal({
   busyAction,
   onChooseMusicFolder,
   onChooseCoverFolder,
+  onSkipMusic,
   onSkipCoverArt,
   onSetUpLater,
 }: FirstRunSetupModalProps) {
@@ -70,7 +72,9 @@ export function FirstRunSetupModal({
           <p>
             {step === 'music'
               ? 'Choose the folder where you keep your songs. Resonance will scan it and keep your library on this device.'
-              : 'Your music folder is ready. Add a folder of album covers for the best experience, or skip this step.'}
+              : musicFolderName
+                ? 'Your music folder is ready. Add a folder of album covers for the best experience, or skip this step.'
+                : 'Music import is skipped for now. You can still add a folder of album covers, or skip this step.'}
           </p>
         </div>
 
@@ -103,13 +107,15 @@ export function FirstRunSetupModal({
           </div>
         ) : (
           <>
-            <StatusBanner
-              variant="success"
-              className="first-run-selected-folder"
-              icon={<CheckFilled size={17} />}
-              title="Music folder selected"
-              description={musicFolderName || 'Your music folder'}
-            />
+            {musicFolderName && (
+              <StatusBanner
+                variant="success"
+                className="first-run-selected-folder"
+                icon={<CheckFilled size={17} />}
+                title="Music folder selected"
+                description={musicFolderName}
+              />
+            )}
 
             <div className="first-run-folder-card">
               <div className="first-run-folder-icon cover">
@@ -139,8 +145,8 @@ export function FirstRunSetupModal({
               Skip cover art and finish
             </button>
           ) : (
-            <button type="button" className="first-run-secondary-btn" onClick={onSetUpLater} disabled={Boolean(busyAction)}>
-              I’ll set this up later
+            <button type="button" className="first-run-secondary-btn" onClick={onSkipMusic} disabled={Boolean(busyAction)}>
+              Skip music folder
             </button>
           )}
         </footer>
