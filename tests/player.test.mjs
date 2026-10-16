@@ -974,22 +974,24 @@ test('deleting a song removes playlist references and stops it if currently play
   }
 })
 
-test('song rows stay crisp while playback progress and volume use React Bits ElasticSlider', () => {
+test('song rows use AnimatedList while playback progress and volume use React Bits ElasticSlider', () => {
   const appCss = fs.readFileSync(new URL('../src/App.css', import.meta.url), 'utf8')
   const volumeCss = fs.readFileSync(new URL('../src/components/ElasticSlider.css', import.meta.url), 'utf8')
   const trackList = fs.readFileSync(new URL('../src/components/TrackList.tsx', import.meta.url), 'utf8')
+  const animatedList = fs.readFileSync(new URL('../src/components/AnimatedList.tsx', import.meta.url), 'utf8')
+  const animatedCss = fs.readFileSync(new URL('../src/components/AnimatedList.css', import.meta.url), 'utf8')
   const app = fs.readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
   const playerBar = fs.readFileSync(new URL('../src/components/PlayerBar.tsx', import.meta.url), 'utf8')
 
-  // Position-only layout animation slides surviving rows into their new filtered slots
-  // without scaling text or controls (which can make the UI look soft).
-  assert.match(trackList, /layout="position"/)
-  assert.match(trackList, /layout: \{ duration: 0\.38, ease:/)
-  assert.doesNotMatch(trackList, /scale:\s*\{/)
-  assert.match(trackList, /initial=\{isCurrentTrack \? \{ opacity: 0 \} : \{ opacity: 0, y: 24 \}\}/)
-  assert.match(trackList, /initial=\{isCurrentTrack \? \{ opacity: 0 \} : \{ opacity: 0, y: 24 \}\}/)
-  assert.match(trackList, /exit=\{isCurrentTrack \? \{ opacity: 0 \} : \{ opacity: 0, y: -22 \}\}/)
-  assert.match(trackList, /layout="position"/)
+  assert.match(trackList, /<AnimatedList/)
+  assert.match(trackList, /animation="slide"/)
+  assert.match(trackList, /maxHeight="min\(62vh, 720px\)"/)
+  assert.match(trackList, /onItemSelect=\{\(_item, index\) =>/)
+  assert.match(animatedList, /enableArrowNavigation/)
+  assert.match(animatedList, /IntersectionObserver/)
+  assert.match(animatedList, /data-index=\{index\}/)
+  assert.match(animatedCss, /\.animated-list__indicator/)
+  assert.match(animatedCss, /\.track-list-animated \.animated-list__item\.animated-track-shell/)
   assert.match(appCss, /\.track-more-btn \{[\s\S]*?background: transparent;[\s\S]*?border: 0;/)
   assert.match(app, /key="downloads-section"[\s\S]*?initial=\{\{ opacity: 0, y: 12 \}\}[\s\S]*?exit=\{\{ opacity: 0, y: -8 \}\}/)
   assert.match(app, /key="library-section"[\s\S]*?initial=\{\{ opacity: 0, y: 8 \}\}/)
@@ -1391,15 +1393,18 @@ test('first-run setup completion is normalized and persisted in desktop payloads
 })
 
 
-test('search results animate individual rows out even when no tracks match', () => {
+test('song search uses AnimatedList scrolling and preserves the empty-state transition', () => {
   const app = fs.readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
   const trackList = fs.readFileSync(new URL('../src/components/TrackList.tsx', import.meta.url), 'utf8')
+  const animatedList = fs.readFileSync(new URL('../src/components/AnimatedList.tsx', import.meta.url), 'utf8')
 
-  // Keep TrackList mounted between search updates so its AnimatePresence can retain exiting rows.
   assert.match(app, /key="track-list-results"/)
   assert.doesNotMatch(app, /key=\{trackCount === 0 \? 'track-list-empty'/)
-  assert.match(trackList, /<AnimatePresence mode="sync" initial=\{false\}>[\s\S]*?tracks\.length === 0 \? \([\s\S]*?renderEmptyState\(\)[\s\S]*?<AnimatePresence initial=\{false\} mode="popLayout" propagate>/)
-  assert.match(trackList, /exit=\{isCurrentTrack \? \{ opacity: 0 \} : \{ opacity: 0, y: -22 \}\}/)
+  assert.match(trackList, /<AnimatePresence mode="sync" initial=\{false\}>[\s\S]*?tracks\.length === 0 \? \([\s\S]*?renderEmptyState\(\)[\s\S]*?<AnimatedList/)
+  assert.match(trackList, /key=\{activePlaylistId \+ ':' \+ filterQuery\}/)
+  assert.match(trackList, /animation="slide"/)
+  assert.match(animatedList, /role="listbox"/)
+  assert.match(animatedList, /role="option"/)
 })
 
 test('skipping music-folder import advances first-run setup to cover-art import', () => {
@@ -1418,10 +1423,16 @@ test('skipping music-folder import advances first-run setup to cover-art import'
 })
 
 
-test('single-song playlist updates cannot remain behind an empty-state exit', () => {
+test('AnimatedList rows keep song actions and reset between playlists or searches', () => {
   const trackList = fs.readFileSync(new URL('../src/components/TrackList.tsx', import.meta.url), 'utf8')
-  assert.match(trackList, /setVisibleRange\(\{ start: 0, end: 32 \}\)\s*\}, \[filterQuery, activePlaylistId, tracks\.length\]\)/)
-  assert.match(trackList, /<AnimatePresence mode="sync" initial=\{false\}>/)
+  const animatedCss = fs.readFileSync(new URL('../src/components/AnimatedList.css', import.meta.url), 'utf8')
+  assert.match(trackList, /items=\{animatedItems\}/)
+  assert.match(trackList, /onItemSelect=\{\(_item, index\) =>/)
+  assert.match(trackList, /onToggleFavorite\(track\.id\)/)
+  assert.match(trackList, /onDeleteTrack\(track\)/)
+  assert.match(trackList, /onEditTrack\(track\)/)
+  assert.match(trackList, /key=\{activePlaylistId \+ ':' \+ filterQuery\}/)
+  assert.match(animatedCss, /\.track-list-animated \.animated-list__viewport/)
 })
 
 test('track and playlist action menus use subtle enter and exit animations', () => {
