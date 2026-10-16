@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { EllipsisVertical } from 'lucide-react'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ChangeEvent, CSSProperties } from 'react'
 import {
   CloseFilled,
@@ -19,7 +19,7 @@ import {
 import { favoritesId, libraryId } from '../store/useMusicStore'
 import { cleanDisplayTitle, formatTime } from '../utils/library'
 import type { Playlist, Track } from '../types'
-import { getVirtualListRange } from '../utils/virtualList.ts'
+import AnimatedList from './AnimatedList'
 
 export type TrackListProps = {
   tracks: Track[]
@@ -44,8 +44,6 @@ export type TrackListProps = {
   onNativeMusicFolder?: () => void
   onNativeCoverFolder?: () => void
 }
-
-const TRACK_ROW_HEIGHT = 86
 export function TrackList({
   tracks,
   filterQuery = '',
@@ -68,8 +66,6 @@ export function TrackList({
   onNativeMusicFolder,
   onNativeCoverFolder,
 }: TrackListProps) {
-  const listRef = useRef<HTMLDivElement | null>(null)
-  const [visibleRange, setVisibleRange] = useState({ start: 0, end: 32 })
   const [openMenuTrackId, setOpenMenuTrackId] = useState<string | null>(null)
   const [hoveredTrackMenuItem, setHoveredTrackMenuItem] = useState<'edit' | 'delete' | null>(null)
 
@@ -92,59 +88,6 @@ export function TrackList({
       window.removeEventListener('keydown', closeOnEscape)
     }
   }, [openMenuTrackId])
-
-  // Search changes can shrink a large virtual list to just a few rows. Reset the
-  // virtual window before paint so stale scroll offsets never leave blank space.
-  useLayoutEffect(() => {
-    setVisibleRange({ start: 0, end: 32 })
-  }, [filterQuery, activePlaylistId, tracks.length])
-
-  const updateVisibleRange = useCallback(() => {
-    const list = listRef.current
-    const scrollContainer = list?.closest<HTMLElement>('.content')
-    if (!list || !scrollContainer) return
-
-    const listTop = list.getBoundingClientRect().top -
-      scrollContainer.getBoundingClientRect().top +
-      scrollContainer.scrollTop
-    const relativeTop = Math.max(0, scrollContainer.scrollTop - listTop)
-    const nextRange = getVirtualListRange(
-      tracks.length,
-      relativeTop,
-      scrollContainer.clientHeight,
-      TRACK_ROW_HEIGHT,
-    )
-
-    setVisibleRange((current) =>
-      current.start === nextRange.start && current.end === nextRange.end
-        ? current
-        : nextRange,
-    )
-  }, [tracks.length])
-
-  useEffect(() => {
-    const list = listRef.current
-    const scrollContainer = list?.closest<HTMLElement>('.content')
-    if (!list || !scrollContainer) return
-
-    let frame = 0
-    const scheduleUpdate = () => {
-      if (frame) cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => {
-        frame = 0
-        updateVisibleRange()
-      })
-    }
-
-    scrollContainer.addEventListener('scroll', scheduleUpdate, { passive: true })
-    window.addEventListener('resize', scheduleUpdate)
-    scheduleUpdate()
-    return () => {
-      scrollContainer.removeEventListener('scroll', scheduleUpdate)
-      window.removeEventListener('resize', scheduleUpdate)
-      if (frame) cancelAnimationFrame(frame)
-    }
-  }, [activePlaylistId, updateVisibleRange])
 
   const favoritesPlaylist = playlists.find((p) => p.id === favoritesId)
   const favoriteTrackIds = new Set(favoritesPlaylist?.trackIds ?? [])
@@ -264,58 +207,45 @@ export function TrackList({
     )
   }
 
+  const animatedItems = useMemo(
+    () => tracks.map((track) => ({
+      id: track.id,
+      title: cleanDisplayTitle(track.title),
+      description: track.artist,
+      meta: formatTime(track.duration),
+    })),
+    [tracks],
+  )
+
   return (
     <AnimatePresence mode="sync" initial={false}>
       {tracks.length === 0 ? (
         renderEmptyState()
       ) : (
-      <motion.div
-        key={activePlaylistId}
-        ref={listRef}
-        className="track-list track-list-virtual"
-        style={{ height: Math.max(0, tracks.length * TRACK_ROW_HEIGHT - 10) }}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -6 }}
-        transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <AnimatePresence initial={false} mode="popLayout" propagate>
-        {tracks.slice(visibleRange.start, visibleRange.end).map((track, offset) => {
-          const index = visibleRange.start + offset
-          const isCurrentTrack = currentTrackId === track.id
-          const isFavorited = favoriteTrackIds.has(track.id)
-          return (
-            <motion.article
-              className={`track-row ${isCurrentTrack ? 'active ' : ''}${openMenuTrackId === track.id ? 'menu-open' : ''}`}
-              key={track.id}
-              layout="position"
-              initial={isCurrentTrack ? { opacity: 0 } : { opacity: 0, y: 24 }}
-              animate={isCurrentTrack ? { opacity: 1 } : { opacity: 1, y: 0 }}
-              exit={isCurrentTrack ? { opacity: 0 } : { opacity: 0, y: -22 }}
-              transition={{
-                layout: { duration: 0.38, ease: [0.22, 1, 0.36, 1] },
-                opacity: { duration: 0.22, delay: Math.min(offset * 0.008, 0.08) },
-                y: { duration: 0.3, ease: [0.22, 1, 0.36, 1], delay: Math.min(offset * 0.006, 0.06) },
-              }}
-              style={{
-                position: 'absolute',
-                top: index * TRACK_ROW_HEIGHT,
-                left: 0,
-                right: 0,
-                height: TRACK_ROW_HEIGHT - 10,
-              }}
-              onClick={() => onPlay(track.id)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  if (e.target === e.currentTarget) {
-                    e.preventDefault()
-                    onPlay(track.id)
-                  }
-                }
-              }}
-            >
+        <motion.div
+          key={activePlaylistId}
+          className="track-list-transition"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <AnimatedList
+            key={activePlaylistId + ':' + filterQuery}
+            items={animatedItems}
+            onItemSelect={(_item, index) => {
+              const track = tracks[index]
+              if (track) onPlay(track.id)
+            }}
+            renderItem={(_item, index) => {
+              const track = tracks[index]
+              if (!track) return null
+              const isCurrentTrack = currentTrackId === track.id
+              const isFavorited = favoriteTrackIds.has(track.id)
+              return (
+                <article
+                  className={'track-row ' + (isCurrentTrack ? 'active ' : '') + (openMenuTrackId === track.id ? 'menu-open' : '')}
+                >
               <motion.button
                 className="track-play"
                 type="button"
@@ -483,11 +413,30 @@ export function TrackList({
                   </motion.button>
                 )}
               </div>
-            </motion.article>
-          )
-        })}
-        </AnimatePresence>
-      </motion.div>
+
+                </article>
+              )
+            }}
+            initialSelectedIndex={-1}
+            selectOnHover
+            enableArrowNavigation
+            loop={false}
+            animation="slide"
+            animateOnce={false}
+            stagger={0.018}
+            showGradients
+            fadeSize={42}
+            displayScrollbar={false}
+            frame={false}
+            theme="dark"
+            radius={18}
+            gap={10}
+            width="100%"
+            maxHeight="min(62vh, 720px)"
+            className="track-list-animated"
+            itemClassName="animated-track-shell"
+          />
+        </motion.div>
       )}
     </AnimatePresence>
   )
