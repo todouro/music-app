@@ -971,7 +971,7 @@ test('deleting a song removes playlist references and stops it if currently play
   }
 })
 
-test('song rows stay crisp, volume stays static, and progress easing only runs while seeking', () => {
+test('song rows stay crisp, elastic volume animates smoothly, and progress easing only runs while seeking', () => {
   const appCss = fs.readFileSync(new URL('../src/App.css', import.meta.url), 'utf8')
   const volumeCss = fs.readFileSync(new URL('../src/components/ElasticSlider.css', import.meta.url), 'utf8')
   const trackList = fs.readFileSync(new URL('../src/components/TrackList.tsx', import.meta.url), 'utf8')
@@ -997,6 +997,9 @@ test('song rows stay crisp, volume stays static, and progress easing only runs w
   assert.match(playerBar, /value=\{Math\.round\(volume \* 100\)\}/)
   assert.match(playerBar, /onChange=\{\(value\) => onVolume\(value \/ 100\)\}/)
   assert.match(playerBar, /valuePosition="none"/)
+  assert.match(playerBar, /isStepped/)
+  assert.match(playerBar, /stepSize={1}/)
+  assert.match(playerBar, /ariaLabel="Volume"/)
   assert.match(playerBar, /isDragging \? 'scrubbing'/)
   assert.match(appCss, /\.scrubber-fill \{[\s\S]*?transition: none/)
   assert.match(appCss, /\.scrubber-hitbox\.scrubbing \.scrubber-fill[\s\S]*?transition: width 55ms cubic-bezier/)
