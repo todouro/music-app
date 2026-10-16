@@ -14,6 +14,8 @@
     "tauri:build:win": "tauri build --bundles nsis"
   },
   "dependencies": {
+    "@hugeicons/core-free-icons": "^4.3.3",
+    "@hugeicons/react": "^1.1.10",
     "@tauri-apps/api": "^2.12.1",
     "@tauri-apps/plugin-dialog": "^2.8.1",
     "@tauri-apps/plugin-fs": "^2.6.0",
