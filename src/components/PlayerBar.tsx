@@ -337,6 +337,9 @@ export function PlayerBar({
           value={Math.round(volume * 100)}
           onChange={(value) => onVolume(value / 100)}
           valuePosition="none"
+          isStepped
+          stepSize={1}
+          ariaLabel="Volume"
           style={{ width: "100%" }}
         />
       </div>
