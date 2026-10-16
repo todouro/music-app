@@ -172,8 +172,6 @@ export default function AnimatedList({
   const [selected, setSelected] = useState(initialSelectedIndex)
   const baseId = useId()
   const navigatingRef = useRef(false)
-  selectedRef.current = selected
-  settingsRef.current = { items, onItemSelect, selectOnHover, enableArrowNavigation, loop, animation, animateOnce, stagger, showGradients, fadeSize, selected }
 
   const placeIndicator = (snap = false) => {
     const item = itemRefs.current[selectedRef.current]
@@ -201,9 +199,10 @@ export default function AnimatedList({
     viewport.style.setProperty('--al-fade-bottom', bottom.toFixed(1) + 'px')
   }
 
-  useEffect(() => {
-    setSelected(initialSelectedIndex)
-  }, [initialSelectedIndex])
+  useIsoLayoutEffect(() => {
+    selectedRef.current = selected
+    settingsRef.current = { items, onItemSelect, selectOnHover, enableArrowNavigation, loop, animation, animateOnce, stagger, showGradients, fadeSize, selected }
+  })
 
   useIsoLayoutEffect(() => {
     const root = rootRef.current
@@ -389,7 +388,7 @@ export default function AnimatedList({
         '--al-accent': accentColor || 'var(--al-ink)',
         ...(accentColor ? { '--al-ring': accentColor, '--al-ring-fill': 'color-mix(in srgb, ' + accentColor + ' 8%, transparent)' } : {}),
         ...style,
-      } as CSSProperties}
+      } as unknown as CSSProperties}
     >
       <div
         ref={viewportRef}
