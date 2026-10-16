@@ -165,6 +165,8 @@ export default function AnimatedList({
   const indicatorRef = useRef<HTMLSpanElement>(null)
   const ringRef = useRef<HTMLSpanElement>(null)
   const itemRefs = useRef<Array<HTMLDivElement | null>>([])
+  const engineRef = useRef<(() => void) | null>(null)
+  const engagedRef = useRef(false)
   const selectedRef = useRef(initialSelectedIndex)
   const settingsRef = useRef({ items, onItemSelect, selectOnHover, enableArrowNavigation, loop, animation, animateOnce, stagger, showGradients, fadeSize, selected: initialSelectedIndex })
   const [selected, setSelected] = useState(initialSelectedIndex)
@@ -215,7 +217,7 @@ export default function AnimatedList({
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
     const springEase = CSS.supports?.('transition-timing-function', 'linear(0, 1)') ? SPRING : 'cubic-bezier(0.34, 1.4, 0.64, 1)'
     const transition = 'transform 620ms ' + springEase + ', opacity 300ms cubic-bezier(0.22, 1, 0.36, 1), filter 200ms ease'
-    const mode = () => {
+    const mode = (): 'none' | 'pop' | 'slide' | 'fade' => {
       const chosen = settingsRef.current.animation
       if (chosen === 'none' || !HIDDEN[chosen]) return 'none'
       return reduced ? 'fade' : chosen
@@ -299,7 +301,7 @@ export default function AnimatedList({
       const active = document.activeElement
       const focused = active === viewport
       const idle = !active || active === document.body || active === document.documentElement
-      if (!focused && !(engaged && idle)) return
+      if (!focused && !(engagedRef.current && idle)) return
       const count = s.items.length
       if (!count) return
       const index = s.selected
@@ -320,10 +322,9 @@ export default function AnimatedList({
       navigatingRef.current = true
       setSelected(next)
     }
-    let engaged = false
     let pointer = [0, 0]
-    const onEnter = () => { engaged = true }
-    const onLeave = () => { engaged = false }
+    const onEnter = () => { engagedRef.current = true }
+    const onLeave = () => { engagedRef.current = false }
     const onPointerMove = (event: PointerEvent) => {
       const moved = event.clientX !== pointer[0] || event.clientY !== pointer[1]
       pointer = [event.clientX, event.clientY]
@@ -350,9 +351,8 @@ export default function AnimatedList({
       root.removeEventListener('pointermove', onPointerMove)
       window.removeEventListener('keydown', onKey)
     }
-  }, [])
+  }, [items, animation])
 
-  const engineRef = useRef<(() => void) | null>(null)
   useIsoLayoutEffect(() => {
     engineRef.current?.()
     placeIndicator()
