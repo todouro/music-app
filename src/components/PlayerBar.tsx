@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent, RefObject } from 'react'
 import { motion } from 'framer-motion'
 import type { Howl } from 'howler'
+import { HugeiconsIcon } from '@hugeicons/react'
+import { VolumeHighIcon, VolumeLowIcon } from '@hugeicons/core-free-icons'
 import ElasticSlider from './ElasticSlider'
 import {
   DiscFilled,
@@ -333,7 +335,18 @@ export function PlayerBar({
 
       {/* 3. Brand-new Modern Volume Controller on Right */}
       <div className="volume">
-        <ElasticSlider value={volume} onChange={onVolume} />
+        <ElasticSlider
+          value={Math.round(volume * 100)}
+          onChange={(value) => onVolume(value / 100)}
+          leftIcon={<HugeiconsIcon icon={VolumeLowIcon} size={20} strokeWidth={1.75} />}
+          rightIcon={<HugeiconsIcon icon={VolumeHighIcon} size={20} strokeWidth={1.75} />}
+          iconColor="var(--muted)"
+          valuePosition="none"
+          isStepped
+          stepSize={1}
+          ariaLabel="Volume"
+          style={{ width: "100%" }}
+        />
       </div>
     </footer>
   )
