@@ -171,7 +171,6 @@ export default function AnimatedList({
   const settingsRef = useRef({ items, onItemSelect, selectOnHover, enableArrowNavigation, loop, animation, animateOnce, stagger, showGradients, fadeSize, selected: initialSelectedIndex })
   const [selected, setSelected] = useState(initialSelectedIndex)
   const baseId = useId()
-  const keyboardRef = useRef(false)
   const navigatingRef = useRef(false)
   selectedRef.current = selected
   settingsRef.current = { items, onItemSelect, selectOnHover, enableArrowNavigation, loop, animation, animateOnce, stagger, showGradients, fadeSize, selected }
@@ -318,7 +317,6 @@ export default function AnimatedList({
       if (next === null) return
       event.preventDefault()
       next = s.loop ? (next + count) % count : Math.min(count - 1, Math.max(0, next))
-      keyboardRef.current = true
       navigatingRef.current = true
       setSelected(next)
     }
