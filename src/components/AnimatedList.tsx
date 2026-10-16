@@ -132,7 +132,7 @@ const FADE_MASK = (() => {
   return 'linear-gradient(to bottom, ' + [...top, ...bottom].join(', ') + ')'
 })()
 
-const entry = (item: AnimatedListItem) => (typeof item === 'string' ? { title: item } : item)
+const entry = (item: AnimatedListItem): Exclude<AnimatedListItem, string> => (typeof item === 'string' ? { title: item } : item)
 
 export default function AnimatedList({
   items = DEFAULT_ITEMS,
