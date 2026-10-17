@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{Emitter, Manager};
 use tauri_plugin_fs::FsExt;
-use util::{last_line, validate_url, Progress, PROGRESS_PREFIX};
+use util::{installer_error, last_line, validate_url, Progress, PROGRESS_PREFIX};
 
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -28,38 +28,147 @@ static INSTALL_LOCK: Mutex<()> = Mutex::new(());
 // variable (never interpolated into the script) so odd characters in a path cannot alter it.
 const INSTALL_SCRIPT: &str = r#"$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12
-$base='https://github.com/yt-dlp/yt-dlp/releases/latest/download/'
-$out=$env:RESONANCE_YTDLP_OUT; $tmp=$out+'.download'
+$api='https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest'
+$out=$env:RESONANCE_YTDLP_OUT; $tmp=$out+'.download'; $sumsFile=$out+'.sums'
 try {
-  Invoke-WebRequest -UseBasicParsing -Uri ($base+'yt-dlp.exe') -OutFile $tmp
-  $sums=(Invoke-WebRequest -UseBasicParsing -Uri ($base+'SHA2-256SUMS')).Content
-  $line=($sums -split "`n" | Where-Object { $_ -match '^[0-9a-fA-F]{64}\s+\*?yt-dlp\.exe\s*$' } | Select-Object -First 1)
-  if (-not $line) { throw 'Could not find the published yt-dlp checksum.' }
-  $expected=($line.Trim() -split '\s+')[0].ToLower()
-  $actual=(Get-FileHash -Algorithm SHA256 -LiteralPath $tmp).Hash.ToLower()
-  if ($expected -ne $actual) { throw 'Checksum mismatch: the download was rejected.' }
+  # Fetch release metadata once so the executable and checksum asset are pinned to the same release.
+  $release=$null
+  for ($attempt=1; $attempt -le 3; $attempt++) {
+    try {
+      $release=Invoke-RestMethod -UseBasicParsing -Uri $api -Headers @{ Accept='application/vnd.github+json'; 'User-Agent'='Resonance' }
+      if ($release) { break }
+    } catch {
+      if ($attempt -eq 3) { throw }
+      Start-Sleep -Seconds 2
+    }
+  }
+  if (-not $release) { throw 'GitHub did not return yt-dlp release metadata after 3 attempts.' }
+
+  $asset=$release.assets | Where-Object { $_.name -eq 'yt-dlp.exe' } | Select-Object -First 1
+  if (-not $asset) { throw 'Could not find yt-dlp.exe in the latest GitHub release.' }
+  $downloadUrl=[string]$asset.browser_download_url
+  if ($downloadUrl -notmatch '^https://github\.com/yt-dlp/yt-dlp/releases/download/') { throw 'GitHub returned an unexpected yt-dlp download URL; refusing to continue.' }
+
+  # Prefer the digest published with this exact asset. Older releases/API responses may not
+  # provide it, so fall back to that same release's checksum list, downloaded to disk because
+  # PowerShell can expose application/octet-stream response bodies as bytes instead of text.
+  $expected=$null
+  $digest=[string]$asset.digest
+  if ($digest) {
+    if ($digest -notmatch '^sha256:[0-9a-fA-F]{64}$') { throw 'GitHub returned an invalid SHA-256 digest for yt-dlp.exe; refusing to install an unverified download.' }
+    $expected=$digest.Substring(7).ToLowerInvariant()
+  } else {
+    $sumsAsset=$release.assets | Where-Object { $_.name -eq 'SHA2-256SUMS' } | Select-Object -First 1
+    if (-not $sumsAsset) { throw 'GitHub did not provide a yt-dlp checksum asset or a published SHA-256 digest.' }
+    $sumsUrl=[string]$sumsAsset.browser_download_url
+    if ($sumsUrl -notmatch '^https://github\.com/yt-dlp/yt-dlp/releases/download/') { throw 'GitHub returned an unexpected yt-dlp checksum URL; refusing to continue.' }
+    $line=$null
+    for ($attempt=1; $attempt -le 3; $attempt++) {
+      try {
+        if (Test-Path -LiteralPath $sumsFile) { Remove-Item -Force -LiteralPath $sumsFile }
+        Invoke-WebRequest -UseBasicParsing -Uri $sumsUrl -OutFile $sumsFile
+        $line=Get-Content -LiteralPath $sumsFile | Where-Object { $_ -match '^[0-9a-fA-F]{64}\s+\*?yt-dlp\.exe\s*$' } | Select-Object -First 1
+        if (-not $line) { throw 'Could not find the published yt-dlp checksum in the downloaded checksum file.' }
+        break
+      } catch {
+        if ($attempt -eq 3) { throw }
+        Start-Sleep -Seconds 2
+      }
+    }
+    if (-not $line) { throw 'Could not find the published yt-dlp checksum.' }
+    $expected=($line.Trim() -split '\s+')[0].ToLowerInvariant()
+  }
+
+  # Retry transient downloads and verify every downloaded byte before installing.
+  $verified=$false
+  for ($attempt=1; $attempt -le 3; $attempt++) {
+    try {
+      if (Test-Path -LiteralPath $tmp) { Remove-Item -Force -LiteralPath $tmp }
+      Invoke-WebRequest -UseBasicParsing -Uri $downloadUrl -OutFile $tmp
+      $actual=(Get-FileHash -Algorithm SHA256 -LiteralPath $tmp).Hash.ToLowerInvariant()
+      if ($actual -ne $expected) { throw 'The downloaded yt-dlp executable failed SHA-256 verification; the download was rejected.' }
+      $verified=$true
+      break
+    } catch {
+      if ($attempt -eq 3) { throw }
+      Start-Sleep -Seconds 2
+    }
+  }
+  if (-not $verified) { throw 'The yt-dlp executable could not be downloaded and verified after 3 attempts.' }
   Move-Item -Force -LiteralPath $tmp -Destination $out
-} finally { if (Test-Path -LiteralPath $tmp) { Remove-Item -Force -LiteralPath $tmp } }"#;
+} catch {
+  [Console]::Error.WriteLine('RESONANCE_ERROR: ' + $_.Exception.Message)
+  throw
+} finally {
+  foreach ($f in @($tmp, $sumsFile)) {
+    if (Test-Path -LiteralPath $f) { Remove-Item -Force -LiteralPath $f }
+  }
+}"#;
 
 // Same idea for ffmpeg (needed by yt-dlp for MP3/M4A/Opus/FLAC/WAV conversion): the zip is
 // verified against the checksum list published with the release before anything is unpacked.
 const FFMPEG_INSTALL_SCRIPT: &str = r#"$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$base='https://github.com/yt-dlp/FFmpeg-Builds/releases/latest/download/'
+$api='https://api.github.com/repos/yt-dlp/FFmpeg-Builds/releases/latest'
 $name='ffmpeg-master-latest-win64-gpl.zip'
 $dest=$env:RESONANCE_FFMPEG_DIR; $work=$dest+'.work'
 if (Test-Path -LiteralPath $work) { Remove-Item -Recurse -Force -LiteralPath $work }
 New-Item -ItemType Directory -Force -Path $work | Out-Null
 try {
+  # Pin the archive and its checksum asset to the same release returned by GitHub.
+  $release=$null
+  for ($attempt=1; $attempt -le 3; $attempt++) {
+    try {
+      $release=Invoke-RestMethod -UseBasicParsing -Uri $api -Headers @{ Accept='application/vnd.github+json'; 'User-Agent'='Resonance' }
+      if ($release) { break }
+    } catch {
+      if ($attempt -eq 3) { throw }
+      Start-Sleep -Seconds 2
+    }
+  }
+  if (-not $release) { throw 'GitHub did not return FFmpeg release metadata after 3 attempts.' }
+
+  $asset=$release.assets | Where-Object { $_.name -eq $name } | Select-Object -First 1
+  if (-not $asset) { throw 'Could not find the FFmpeg archive in the latest GitHub release.' }
+  $downloadUrl=[string]$asset.browser_download_url
+  if ($downloadUrl -notmatch '^https://github\.com/yt-dlp/FFmpeg-Builds/releases/download/') { throw 'GitHub returned an unexpected FFmpeg download URL; refusing to continue.' }
+
+  # Use GitHub's per-asset digest where available. For older release metadata, fall back to
+  # the checksum file from this same release and read it from disk (not .Content).
+  $expected=$null
+  $digest=[string]$asset.digest
+  if ($digest) {
+    if ($digest -notmatch '^sha256:[0-9a-fA-F]{64}$') { throw 'GitHub returned an invalid SHA-256 digest for the FFmpeg archive; refusing to use an unverified download.' }
+    $expected=$digest.Substring(7).ToLowerInvariant()
+  } else {
+    $sumsAsset=$release.assets | Where-Object { $_.name -eq 'checksums.sha256' } | Select-Object -First 1
+    if (-not $sumsAsset) { throw 'GitHub did not provide an FFmpeg checksum asset or a published SHA-256 digest.' }
+    $sumsUrl=[string]$sumsAsset.browser_download_url
+    if ($sumsUrl -notmatch '^https://github\.com/yt-dlp/FFmpeg-Builds/releases/download/') { throw 'GitHub returned an unexpected FFmpeg checksum URL; refusing to continue.' }
+    $sumsFile=Join-Path $work 'checksums.sha256'
+    $line=$null
+    for ($attempt=1; $attempt -le 3; $attempt++) {
+      try {
+        if (Test-Path -LiteralPath $sumsFile) { Remove-Item -Force -LiteralPath $sumsFile }
+        Invoke-WebRequest -UseBasicParsing -Uri $sumsUrl -OutFile $sumsFile
+        $line=Get-Content -LiteralPath $sumsFile | Where-Object { $_ -match ('^[0-9a-fA-F]{64}\s+\*?'+[regex]::Escape($name)+'\s*$') } | Select-Object -First 1
+        if (-not $line) { throw 'Could not find the published FFmpeg checksum in the downloaded checksum file.' }
+        break
+      } catch {
+        if ($attempt -eq 3) { throw }
+        Start-Sleep -Seconds 2
+      }
+    }
+    if (-not $line) { throw 'Could not find the published FFmpeg checksum.' }
+    $expected=($line.Trim() -split '\s+')[0].ToLowerInvariant()
+  }
+
   $zip=Join-Path $work $name
-  Invoke-WebRequest -UseBasicParsing -Uri ($base+$name) -OutFile $zip
-  $sums=(Invoke-WebRequest -UseBasicParsing -Uri ($base+'checksums.sha256')).Content
-  $line=($sums -split "`n" | Where-Object { $_ -match ('^[0-9a-fA-F]{64}\s+\*?'+[regex]::Escape($name)+'\s*$') } | Select-Object -First 1)
-  if (-not $line) { throw 'Could not find the published ffmpeg checksum.' }
-  $expected=($line.Trim() -split '\s+')[0].ToLower()
-  $actual=(Get-FileHash -Algorithm SHA256 -LiteralPath $zip).Hash.ToLower()
-  if ($expected -ne $actual) { throw 'Checksum mismatch: the ffmpeg download was rejected.' }
+  Invoke-WebRequest -UseBasicParsing -Uri $downloadUrl -OutFile $zip
+  $actual=(Get-FileHash -Algorithm SHA256 -LiteralPath $zip).Hash.ToLowerInvariant()
+  if ($actual -ne $expected) { throw 'The downloaded FFmpeg archive failed SHA-256 verification; the download was rejected.' }
+
   $unzipped=Join-Path $work 'unzipped'
   [IO.Compression.ZipFile]::ExtractToDirectory($zip, $unzipped)
   $ffmpeg=Get-ChildItem -Path $unzipped -Recurse -Filter ffmpeg.exe | Select-Object -First 1
@@ -69,7 +178,12 @@ try {
   New-Item -ItemType Directory -Force -Path $dest | Out-Null
   Copy-Item -Force -LiteralPath $ffmpeg.FullName -Destination (Join-Path $dest 'ffmpeg.exe')
   Copy-Item -Force -LiteralPath $ffprobe -Destination (Join-Path $dest 'ffprobe.exe')
-} finally { if (Test-Path -LiteralPath $work) { Remove-Item -Recurse -Force -LiteralPath $work } }"#;
+} catch {
+  [Console]::Error.WriteLine('RESONANCE_ERROR: ' + $_.Exception.Message)
+  throw
+} finally {
+  if (Test-Path -LiteralPath $work) { Remove-Item -Recurse -Force -LiteralPath $work }
+}"#;
 
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -171,7 +285,7 @@ fn yt_dlp_executable(app: &tauri::AppHandle) -> Result<PathBuf, String> {
 
     if !result.status.success() || !executable.is_file() {
         let _ = fs::remove_file(&executable);
-        let detail = last_line(&result.stderr, "The download did not complete.");
+        let detail = installer_error(&result.stderr, "The download did not complete.");
         return Err(format!("Resonance could not install yt-dlp automatically: {detail} Check your internet connection and try again."));
     }
 
@@ -200,7 +314,7 @@ fn ffmpeg_location(app: &tauri::AppHandle) -> Result<Option<PathBuf>, String> {
     emit_progress(
         app,
         "preparing",
-        "Setting up audio conversion (one-time download, about 100 MB)…",
+        "Setting up audio conversion (one-time download, about 200 MB)…",
         None,
     );
     let result = new_command("powershell.exe")
@@ -211,7 +325,7 @@ fn ffmpeg_location(app: &tauri::AppHandle) -> Result<Option<PathBuf>, String> {
 
     if !result.status.success() || !ready(&dir) {
         let _ = fs::remove_dir_all(&dir);
-        let detail = last_line(&result.stderr, "The download did not complete.");
+        let detail = installer_error(&result.stderr, "The download did not complete.");
         return Err(format!(
             "Resonance could not set up audio conversion: {detail} Check your connection, or choose \"Best available audio\", which needs no conversion."
         ));

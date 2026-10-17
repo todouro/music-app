@@ -69,7 +69,7 @@ Resonance uses [yt-dlp](https://github.com/yt-dlp/yt-dlp) to save audio into you
 
 - **Progress and cancel:** each download shows live progress and can be cancelled at any time. Cancelling stops yt-dlp and ffmpeg and leaves no partial files in your Music folder.
 - **First-run setup:** if yt-dlp is not on your `PATH`, Resonance downloads a private copy into its app-data folder and checks its SHA-256 checksum against the one published with the release before using it.
-- **Audio conversion (MP3, M4A, Opus, FLAC, WAV):** needs ffmpeg. If it is not on your `PATH`, Resonance downloads a checksum-verified private copy the first time you convert (roughly 100 MB, one time). "Best available audio" needs no conversion.
+- **Audio conversion (MP3, M4A, Opus, FLAC, WAV):** needs ffmpeg. If it is not on your `PATH`, Resonance downloads a checksum-verified private copy the first time you convert (about a 200 MB download (roughly 340 MB installed), one time). "Best available audio" needs no conversion.
 - **Stays current:** the private yt-dlp copy checks for a newer release at most once a week. A yt-dlp you installed yourself is never modified.
 
 ## Library maintenance

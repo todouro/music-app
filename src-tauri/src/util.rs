@@ -2,6 +2,7 @@
 
 pub const MAX_URL_LEN: usize = 2048;
 pub const PROGRESS_PREFIX: &str = "RESONANCE_PROGRESS|";
+pub const ERROR_PREFIX: &str = "RESONANCE_ERROR: ";
 
 /// Accepts only a single http(s) URL (scheme check is case-insensitive, matching the UI).
 pub fn validate_url(raw: &str) -> Result<String, String> {
@@ -23,6 +24,29 @@ pub fn last_line(bytes: &[u8], fallback: &str) -> String {
     text.lines()
         .rev()
         .find(|line| !line.trim().is_empty())
+        .unwrap_or(fallback)
+        .trim()
+        .to_string()
+}
+
+/// Extracts the install script's explicit error message, avoiding PowerShell's noisy footer lines.
+pub fn installer_error(bytes: &[u8], fallback: &str) -> String {
+    let text = String::from_utf8_lossy(bytes);
+    if let Some(reason) = text.lines().rev().find_map(|line| {
+        line.trim()
+            .strip_prefix(ERROR_PREFIX)
+            .map(str::trim)
+            .filter(|reason| !reason.is_empty())
+    }) {
+        return reason.to_string();
+    }
+
+    text.lines()
+        .rev()
+        .find(|line| {
+            let line = line.trim();
+            !line.is_empty() && !line.starts_with(ERROR_PREFIX)
+        })
         .unwrap_or(fallback)
         .trim()
         .to_string()
@@ -98,6 +122,18 @@ mod tests {
     fn last_line_skips_blank_lines() {
         assert_eq!(last_line(b"first\nERROR: boom\n\n  \n", "x"), "ERROR: boom");
         assert_eq!(last_line(b"\n\n", "fallback"), "fallback");
+    }
+
+    #[test]
+    fn installer_error_prefers_the_explicit_reason() {
+        let stderr = b"At line:1 char:5\nRESONANCE_ERROR: Checksum mismatch: the download was rejected.\n    + FullyQualifiedErrorId : Checksum mismatch\n";
+        assert_eq!(
+            installer_error(stderr, "fallback"),
+            "Checksum mismatch: the download was rejected."
+        );
+        assert_eq!(installer_error(b"plain failure\n", "fallback"), "plain failure");
+        assert_eq!(installer_error(b"", "fallback"), "fallback");
+        assert_eq!(installer_error(b"RESONANCE_ERROR: \n", "fallback"), "fallback");
     }
 
     #[test]
